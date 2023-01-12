@@ -1,0 +1,31 @@
+# South Sulawesi, Indonesia
+
+spec:
+    lat_min: -7
+    lat_max: -6.5
+    lon_min: 120.5
+    lon_max: 121
+    start_date: 2015-03-01
+    end_date: 2015-04-01
+    max_cloud_cover_fraction: 0.1
+    datasets:
+      LANDSAT_8_C1:
+        bands: [3,4,5,6,10,11,QA]
+
+environment:
+    working_directory: /home/dev/github/eo-pipelines/test/scratch
+    conda_path: /home/dev/miniconda3/bin/conda
+    shell: "/bin/bash"
+    nr_threads: 2
+    echo_stdout: true
+
+pipeline:
+  - stage: eo_pipeline_stages.fetch.Fetch
+  - stage: eo_pipeline_stages.regrid.Regrid
+    configuration:
+      executor: "local"
+      slurm_options:
+        runtime: '00:10'
+        memlimit: '8192'
+        queue: 'short-serial'
+        name': 'testjob'

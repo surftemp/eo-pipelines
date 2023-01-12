@@ -1,0 +1,55 @@
+# South Sulawesi, Indonesia
+
+spec:
+    lon_min: -0.3
+    lon_max: 0.3
+    lat_min: 51.40
+    lat_max: 51.60
+    start_date: 2022-07-16
+    end_date: 2022-07-18
+    max_cloud_cover_fraction: 0.1
+    datasets:
+      LANDSAT_OT_C2_L2:
+        bands: [ST,QA_PIXEL]
+
+
+environment:
+    working_directory: /home/dev/github/eo-pipelines/scratch_london
+    conda_path: /home/dev/miniconda3/bin/conda
+    shell: "/bin/bash"
+
+pipeline:
+  - stage: eo_pipeline_stages.fetch.Fetch
+  - stage: eo_pipeline_stages.fetch.Regrid
+    configuration:
+      resolution_m: 50
+  - stage: slider_tool
+    configuration:
+      title: "slider tool"
+      default_x_dimension: ni
+      default_y_dimension: nj
+      plot_lat_lon: True
+      colour_scales:
+        st:
+          colour_map: [ "blue","yellow", "red" ]
+          zoom: 4
+        visible:
+          colour_map: "viridis"
+
+      layers:
+
+        wmts:
+          title: Open Street Map
+          type: wmts
+
+        layer1:
+          title: ST
+          variable: ST
+          transform: "lambda v: v"
+          colour_scale: st
+
+
+
+
+
+

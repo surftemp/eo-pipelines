@@ -1,0 +1,31 @@
+# Helheim Glacier
+
+spec:
+    lat_min: -75.3
+    lat_max: -74.9
+    lon_min: -100.2
+    lon_max: -99.8
+    start_date: 2015-01-01
+    end_date: 2015-04-01
+    max_cloud_cover_fraction: 0.5
+    datasets:
+      LANDSAT_OT_C2_L1:
+        bands: [ 1,2,3,4,5,6,7,8,9,10,11,QA ]
+      LANDSAT_8_C1:
+        bands: [ 1,2,3,4,5,6,7,8,9,10,11,QA ]
+
+environment:
+    working_directory: /gws/nopw/j04/nceo_uor/niall/pipelines/pineisland
+    conda_path: /home/users/niallmcc/miniconda3/bin/conda
+    shell: "/bin/bash"
+    echo_stdout: True
+
+pipeline:
+  - stage: eo_pipeline_stages.fetch.Fetch
+  - stage: eo_pipeline_stages.fetch.Regrid
+    configuration:
+      include_angles: True
+      export_oli_as: reflectance
+
+
+

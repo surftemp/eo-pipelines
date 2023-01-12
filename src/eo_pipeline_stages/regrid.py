@@ -1,6 +1,5 @@
 import os.path
 
-
 from eo_pipelines.pipeline_stage import PipelineStage
 from eo_pipelines.pipeline_exceptions import PipelineStageException
 from eo_pipelines.executors.executor_factory import ExecutorFactory, ExecutorType
