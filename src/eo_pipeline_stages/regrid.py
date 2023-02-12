@@ -46,10 +46,9 @@ class Regrid(PipelineStage):
         cfg = self.get_configuration()
         executor = cfg.get("executor","local")
         if executor == "local":
-            executor = ExecutorFactory.create_executor(ExecutorType.Local, self.get_environment())
+            executor = ExecutorFactory.create_executor(ExecutorType.Local, self.get_environment(), self.get_configuration())
         else:
-            slurm_options = cfg.get("slurm_options",{})
-            executor = ExecutorFactory.create_executor(ExecutorType.Slurm, slurm_options)
+            executor = ExecutorFactory.create_executor(ExecutorType.Slurm, self.get_environment(), self.get_configuration())
 
         fetched_scenes = input_context["fetched_scenes"]
         regridded_scene_folders = {}
