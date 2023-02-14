@@ -36,9 +36,11 @@ class Elevation(PipelineStage):
 
         scene_folders = input_context["scene_folders"]
         output_context = {"scene_folders": {}}
+        os.makedirs(self.output_path,exist_ok=True)
 
         for dataset in scene_folders:
             output_folder = os.path.join(self.output_path,dataset)
+            os.makedirs(output_folder, exist_ok=True)
 
             custom_env = {
                 "INPUT_PATH": scene_folders[dataset],

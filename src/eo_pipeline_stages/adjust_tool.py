@@ -21,11 +21,14 @@ class Processor:
         ds.to_netcdf(output_path)
 
     def process_simplify_coords(self,ds):
-        # convert the input dataset to
+        # convert the input dataset to use lat,lon as dimensions directly (rather than indirectly through nj, ni)
+        # there should be an easier way to do this?
         ds2 = xr.Dataset(attrs=ds.attrs)
         ds2["time"] = ds["time"]
-        ds2["lon"] = xr.DataArray(data=ds["lon"].data[0,:],dims=("lon",))
-        ds2["lat"] = xr.DataArray(data=ds["lat"].data[:,0],dims=("lat",))
+
+        # extract lat and lon as 1-d arrays from the redundant 2-d input arrays
+        ds2["lon"] = xr.DataArray(data=ds["lon"].data[0,:],dims=("lon",),attrs=ds["lon"].attrs)
+        ds2["lat"] = xr.DataArray(data=ds["lat"].data[:,0],dims=("lat",),attrs=ds["lat"].attrs)
 
         for var in ds.variables:
             if ds[var].dims == ("time","nj","ni"):
