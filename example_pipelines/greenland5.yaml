@@ -1,0 +1,48 @@
+# Greenland 5
+
+spec:
+    lat_min: "64.54.53N"
+    lat_max: "64.54.57N"
+    lon_min: "49.51.16W"
+    lon_max: "49.50.16W"
+    start_date: 2013-01-01
+    end_date: 2023-01-31
+    max_cloud_cover_fraction: 0.05
+    datasets:
+      LANDSAT_OT_C2_L1:
+        bands: [1,2,3,4,5,6,7,8,9,10,11,QA_PIXEL]
+      LANDSAT_OT_C2_L2:
+        bands: [ST,ST_QA]
+
+
+environment:
+    working_directory: /gws/nopw/j04/nceo_uor/niall/pipelines/greenland5
+    conda_path: /home/users/niallmcc/miniconda3/bin/conda
+    shell: "/bin/bash"
+    echo_stdout: True
+
+pipeline:
+  - stage: eo_pipeline_stages.fetch.Fetch
+    execution: False
+    configuration:
+      output_path: /gws/nopw/j04/nceo_uor/niall/usgs_data_dir
+  - stage: eo_pipeline_stages.regrid.Regrid
+    execution: False
+    configuration:
+      include_angles: False
+      resolution_m: 30
+      nr_threads: 4
+      executor: slurm
+      slurm_options:
+        runtime: '00:15'
+        memlimit: '8192'
+        queue: 'short-serial'
+  - stage: eo_pipeline_stages.group.Group
+    execution: False
+  - stage: eo_pipeline_stages.adjust.Adjust
+  - stage: eo_pipeline_stages.elevation.Elevation
+    configuration:
+      dem_path: /gws/nopw/j04/nceo_uor/niall/DEM
+
+
+
