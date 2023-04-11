@@ -104,8 +104,7 @@ class Fetch(PipelineStage):
                     download_count += 1
                     self.get_logger().info("Downloading %d/%d scenes" % (download_count, scene_count))
                     executor.queue_task(self.get_stage_id(), download_script, custom_env, self.get_working_directory())
-                    executor.wait_for_tasks()
-
+            executor.wait_for_tasks()
 
             # check that the scenes have downloaded OK
             with open(scenes_csv_path) as scenes_f:

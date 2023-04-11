@@ -37,8 +37,6 @@ class Regrid(PipelineStage):
     def run(self, input_context):
 
         input_context = input_context["input"]
-        import json
-        print(json.dumps(input_context))
 
         if "fetched_scenes" not in input_context:
             raise PipelineStageException("regrid", "No fetched scenes from a previous stage to regrid")
