@@ -62,6 +62,12 @@ class Fetch(PipelineStage):
             # for each dataset
             scenes_csv_path = os.path.join(self.get_working_directory(),"%s_scenes.csv"%(dataset))
 
+            prune_suffixes = []
+            required_bands = self.get_spec().get_bands_for_dataset(dataset)
+            for band in range(1,12):
+                if str(band) not in required_bands:
+                    prune_suffixes.append("B%d.TIF"%band)
+
             custom_env = {
                     "USGS_USERNAME": usgs_username,
                     "USGS_PASSWORD": usgs_password,
@@ -93,7 +99,8 @@ class Fetch(PipelineStage):
                         "USGS_DATADIR": self.output_path,
                         "CATALOG": catalog,
                         "DATASET": dataset,
-                        "SCENE": scene
+                        "SCENE": scene,
+                        "PRUNE_SUFFIXES": ",".join(prune_suffixes)
                     }
                     scene_count += 1
                     executor.queue_task(self.get_stage_id(), download_script, custom_env, self.get_working_directory(), description=dataset+"/"+scene)
