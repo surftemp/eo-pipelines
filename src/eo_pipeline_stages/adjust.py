@@ -30,7 +30,7 @@ class Adjust(PipelineStage):
         if "scene_folders" not in input_context:
             raise PipelineStageException("group","No scenes available to compute elevation for")
 
-        executor = ExecutorFactory.create_executor(ExecutorType.Local,self.get_environment())
+        executor = self.create_executor(ExecutorType.Local)
 
         scene_folders = input_context["scene_folders"]
         output_context = {"scene_folders": {}}

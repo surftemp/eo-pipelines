@@ -33,8 +33,7 @@ class Group(PipelineStage):
         if "scene_folders" not in input_context:
             raise PipelineStageException("group","No scenes available to group")
 
-        executor = ExecutorFactory.create_executor(ExecutorType.Local,self.get_environment())
-
+        executor = self.create_executor(ExecutorType.Local)
 
         grouping_spec_file_path = os.path.join(self.get_working_directory(),"grouping_spec.json")
         grouping_spec = {

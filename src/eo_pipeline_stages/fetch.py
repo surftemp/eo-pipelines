@@ -34,7 +34,7 @@ class Fetch(PipelineStage):
     def run(self,input_context):
 
         # input_context is not used
-        executor = ExecutorFactory.create_executor(ExecutorType.Local,self.get_environment())
+        executor = self.create_executor(ExecutorType.Local)
 
         usgs_username = os.getenv("USGS_USERNAME")
         usgs_password = os.getenv("USGS_PASSWORD")
@@ -79,17 +79,8 @@ class Fetch(PipelineStage):
             executor.queue_task(self.get_stage_id(),list_script,custom_env,self.get_working_directory())
             executor.wait_for_tasks()
 
-            scene_count = 0
-            with open(scenes_csv_path) as scenes_f:
-                reader = csv.reader(scenes_f)
-                for line in reader:
-                    scene_count += 1
-
-            self.get_logger().info("Found %d scenes to download" % scene_count)
-
             download_script = os.path.join(os.path.split(__file__)[0], "fetch_download.sh")
-            download_count = 0
-            self.get_logger().info("Attempting download of %d scenes" % scene_count)
+            scene_count = 0
             with open(scenes_csv_path) as scenes_f:
                 reader = csv.reader(scenes_f)
                 for line in reader:
@@ -104,9 +95,9 @@ class Fetch(PipelineStage):
                         "DATASET": dataset,
                         "SCENE": scene
                     }
-                    download_count += 1
-                    self.get_logger().info("Queuing Download %d/%d scenes" % (download_count, scene_count))
+                    scene_count += 1
                     executor.queue_task(self.get_stage_id(), download_script, custom_env, self.get_working_directory(), description=dataset+"/"+scene)
+            self.get_logger().info("Attempting download of %d scenes for dataset %s" % (scene_count,dataset))
             executor.wait_for_tasks()
 
             # check that the scenes have downloaded OK
@@ -126,7 +117,7 @@ class Fetch(PipelineStage):
 
             fetched_count = len(fetched_scenes[dataset])
             failed_count = len(failed_scenes[dataset])
-            self.get_logger().info("Fetch for dataset %s, fetched=%d, failed=%d"%(dataset, fetched_count, failed_count))
+            self.get_logger().info("Fetch summary for dataset %s, fetched=%d, failed=%d"%(dataset, fetched_count, failed_count))
 
             total_fetched += fetched_count
             total_failed += failed_count

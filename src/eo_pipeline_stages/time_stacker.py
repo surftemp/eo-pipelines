@@ -32,7 +32,7 @@ class TimeStacker(PipelineStage):
         if "scene_folders" not in input_context:
             raise PipelineStageException("group","No scenes output from previous stage")
 
-        executor = ExecutorFactory.create_executor(ExecutorType.Local, self.get_environment())
+        executor = self.create_executor(ExecutorType.Local)
 
         output_scene_folders = {}
         task_ids = []

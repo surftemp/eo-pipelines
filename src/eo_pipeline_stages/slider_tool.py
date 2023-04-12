@@ -42,7 +42,7 @@ class SliderTool(PipelineStage):
         if "scene_folders" not in input_context:
             raise PipelineStageException("slider_tool", "No fetched scenes to plot")
 
-        executor = ExecutorFactory.create_executor(ExecutorType.Local, self.get_environment())
+        executor = self.create_executor(ExecutorType.Local)
 
         failed = success = 0
         rng = random.Random(self.sample_seed)
