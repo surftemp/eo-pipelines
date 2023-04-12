@@ -61,7 +61,7 @@ class Regrid(PipelineStage):
             regridded_scene_folders[dataset] = regrid_output_path
             self.get_logger().info("Regridding %d scenes in dataset %s"%(len(scenes),dataset))
             for scene in scenes:
-                print(scene,regrid_output_path)
+
                 custom_env = {
                     "SCENE_PATH": scene,
                     "OUTPUT_PATH": regrid_output_path,
@@ -73,7 +73,8 @@ class Regrid(PipelineStage):
                 custom_env["BANDS"] = ",".join(self.get_spec().get_bands_for_dataset(dataset))
 
                 script = os.path.join(os.path.split(__file__)[0], "regrid.sh")
-                task_id = executor.queue_task(self.get_stage_id(),script, custom_env, self.get_working_directory())
+                task_id = executor.queue_task(self.get_stage_id(),script, custom_env, self.get_working_directory(),
+                                              description=dataset+"/"+scene)
                 task_ids.append(task_id)
 
         succeeded = 0

@@ -87,6 +87,7 @@ class Fetch(PipelineStage):
 
             download_script = os.path.join(os.path.split(__file__)[0], "fetch_download.sh")
             download_count = 0
+            self.get_logger().info("Attempting download of %d scenes" % scene_count)
             with open(scenes_csv_path) as scenes_f:
                 reader = csv.reader(scenes_f)
                 for line in reader:
@@ -103,8 +104,7 @@ class Fetch(PipelineStage):
                     }
                     download_count += 1
                     self.get_logger().info("Queuing Download %d/%d scenes" % (download_count, scene_count))
-                    executor.queue_task(self.get_stage_id(), download_script, custom_env, self.get_working_directory())
-            self.get_logger().info("Attempting download of %d scenes" % scene_count)
+                    executor.queue_task(self.get_stage_id(), download_script, custom_env, self.get_working_directory(), description=dataset+"/"+scene)
             executor.wait_for_tasks()
 
             # check that the scenes have downloaded OK
