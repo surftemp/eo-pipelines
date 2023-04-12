@@ -4,6 +4,7 @@ from eo_pipelines.pipeline_stage import PipelineStage
 from eo_pipelines.pipeline_exceptions import PipelineStageException
 from eo_pipelines.executors.executor_factory import ExecutorFactory, ExecutorType
 from eo_pipelines.pipeline_stage_utils import format_int, format_date, format_float
+from . import VERSION
 
 class Regrid(PipelineStage):
 
@@ -15,6 +16,7 @@ class Regrid(PipelineStage):
         self.output_path = self.get_configuration().get("output_path", self.get_working_directory())
         self.include_angles = self.get_configuration().get("include_angles", False)
         self.export_oli_as = self.get_configuration().get("export_oli_as", "corrected_reflectance")
+        self.get_logger().info("eo_pipeline_stages.Regrid %s" % VERSION)
 
     def get_input_types(self):
         return { "input":"usgs_imagery" }

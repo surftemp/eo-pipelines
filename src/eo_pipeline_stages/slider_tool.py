@@ -5,6 +5,7 @@ from yaml import dump
 from eo_pipelines.pipeline_stage import PipelineStage
 from eo_pipelines.pipeline_exceptions import PipelineStageException
 from eo_pipelines.executors.executor_factory import ExecutorFactory, ExecutorType
+from . import VERSION
 
 class SliderTool(PipelineStage):
 
@@ -19,6 +20,7 @@ class SliderTool(PipelineStage):
             f.write(dump(self.slider_tool_config))
         self.sample_seed = self.get_configuration().get("sample_seed", 1.0)
         self.sample_fraction = self.get_configuration().get("sample_fraction",1.0)
+        self.get_logger().info("eo_pipeline_stages.SliderTool %s" % VERSION)
 
     def get_input_types(self):
         return {"input": "netcdf4_yx"}

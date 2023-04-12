@@ -4,6 +4,7 @@ import os
 from eo_pipelines.pipeline_stage import PipelineStage
 from eo_pipelines.pipeline_exceptions import PipelineStageException
 from eo_pipelines.executors.executor_factory import ExecutorFactory, ExecutorType
+from . import VERSION
 
 class Elevation(PipelineStage):
 
@@ -15,6 +16,7 @@ class Elevation(PipelineStage):
             .get("dem_path",None)
         if not self.dem_path:
             raise PipelineStageException(stage_id,"dem_path not specified in configuration")
+        self.get_logger().info("eo_pipeline_stages.Elevation %s" % VERSION)
 
     def get_parameters(self):
         return { "OUTPUT_PATH": self.output_path, "DEM_PATH": self.dem_path }

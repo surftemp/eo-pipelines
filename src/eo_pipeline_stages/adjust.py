@@ -4,6 +4,7 @@ import os
 from eo_pipelines.pipeline_stage import PipelineStage
 from eo_pipelines.pipeline_exceptions import PipelineStageException
 from eo_pipelines.executors.executor_factory import ExecutorFactory, ExecutorType
+from . import VERSION
 
 class Adjust(PipelineStage):
 
@@ -11,6 +12,7 @@ class Adjust(PipelineStage):
         super().__init__(stage_id, "adjust", cfg, spec, environment)
         self.output_path = self.get_configuration()\
             .get("output_path", os.path.join(self.get_working_directory(),"outputs"))
+        self.get_logger().info("eo_pipeline_stages.Adjust %s" % VERSION)
 
     def get_parameters(self):
         return { "OUTPUT_PATH": self.output_path }

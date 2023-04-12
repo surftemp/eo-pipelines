@@ -5,6 +5,7 @@ import csv
 from eo_pipelines.pipeline_stage import PipelineStage
 from eo_pipelines.pipeline_stage_utils import format_int, format_date, format_float
 from eo_pipelines.executors.executor_factory import ExecutorFactory, ExecutorType
+from . import VERSION
 
 class Fetch(PipelineStage):
 
@@ -13,6 +14,7 @@ class Fetch(PipelineStage):
     def __init__(self, stage_id, cfg, spec, environment):
         super().__init__(stage_id, "fetch", cfg, spec, environment)
         self.output_path = self.get_configuration().get("output_path", self.get_working_directory())
+        self.get_logger().info("eo_pipeline_stages.Fetch %s" % VERSION)
 
     def get_output_types(self):
         return { "output":"usgs_imagery" }

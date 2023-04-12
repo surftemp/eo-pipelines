@@ -5,6 +5,7 @@ import json
 from eo_pipelines.pipeline_stage import PipelineStage
 from eo_pipelines.pipeline_exceptions import PipelineStageException
 from eo_pipelines.executors.executor_factory import ExecutorFactory, ExecutorType
+from . import VERSION
 
 class Group(PipelineStage):
 
@@ -12,6 +13,7 @@ class Group(PipelineStage):
         super().__init__(stage_id, "group", cfg, spec, environment)
         self.output_path = self.get_configuration()\
             .get("output_path", os.path.join(self.get_working_directory(),"outputs"))
+        self.get_logger().info("eo_pipeline_stages.Group %s" % VERSION)
 
     def get_parameters(self):
         all_datasets = self.get_spec().get_datasets()
