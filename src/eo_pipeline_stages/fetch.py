@@ -65,8 +65,14 @@ class Fetch(PipelineStage):
             prune_suffixes = []
             required_bands = self.get_spec().get_bands_for_dataset(dataset)
             for band in range(1,12):
+                if band == 10 and "ST" in required_bands:
+                    # workaround - TODO need a cleaner solution
+                    # do not prune *B10.TIF, we need ST_B10.TIF
+                    continue
                 if str(band) not in required_bands:
                     prune_suffixes.append("B%d.TIF"%band)
+
+            self.get_logger().info("Configured pruning of downloaded files with suffixes %s" % ",".join(prune_suffixes))
 
             custom_env = {
                     "USGS_USERNAME": usgs_username,
