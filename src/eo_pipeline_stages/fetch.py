@@ -29,7 +29,7 @@ suffix_map = {
         "SZA": "SZA.TIF"  # collection 2 only
     },
 
-    "LANDSAT_OT_C2_L1": {
+    "LANDSAT_OT_C2_L2": {
         "1" : "SR_B1.TIF",
         "2" : "SR_B2.TIF",
         "3" : "SR_B3.TIF",
