@@ -7,6 +7,50 @@ from eo_pipelines.pipeline_stage_utils import format_int, format_date, format_fl
 from eo_pipelines.executors.executor_factory import ExecutorFactory, ExecutorType
 from . import VERSION
 
+# for supported datasets, map from channel name to a unique file suffix
+suffix_map = {
+    "LANDSAT_OT_C2_L1": {
+        "1" : "B1.TIF",
+        "2" : "B2.TIF",
+        "3" : "B3.TIF",
+        "4" : "B4.TIF",
+        "5" : "B5.TIF",
+        "6" : "B6.TIF",
+        "7" : "B7.TIF",
+        "8" : "B8.TIF",
+        "9" : "B9.TIF",
+        "10" : "B10.TIF",
+        "11" : "B11.TIF",
+        "QA" : "BQA.TIF",
+        "QA_PIXEL": "QA_PIXEL.TIF",
+        "VAA": "VAA.TIF", # collection 2 only
+        "VZA": "VZA.TIF", # collection 2 only
+        "SAA": "SAA.TIF", # collection 2 only
+        "SZA": "SZA.TIF"  # collection 2 only
+    },
+
+    "LANDSAT_OT_C2_L1": {
+        "1" : "SR_B1.TIF",
+        "2" : "SR_B2.TIF",
+        "3" : "SR_B3.TIF",
+        "4" : "SR_B4.TIF",
+        "5" : "SR_B5.TIF",
+        "6" : "SR_B6.TIF",
+        "7" : "SR_B7.TIF",
+        "ST": "ST_B10.TIF",
+        "ST_QA": "ST_QA.TIF",
+        "EMIS": "ST_EMIS.TIF",
+        "EMSD": "ST_EMSD.TIF",
+        "TRAD": "ST_TRAD.TIF",
+        "URAD": "ST_URAD.TIF",
+        "DRAD": "ST_DRAD.TIF",
+        "ATRAN": "ST_ATRAN.TIF",
+        "QA_PIXEL": "QA_PIXEL.TIF",
+        "QA_AEROSOL": "SR_QA_AEROSOL.TIF",
+        "QA_RADSAT": "QA_RADSAT.TIF"
+    }
+}
+
 class Fetch(PipelineStage):
 
     fetch_stage_count = 0
@@ -34,7 +78,6 @@ class Fetch(PipelineStage):
     def run(self,input_context):
 
         # input_context is not used
-        executor = self.create_executor(ExecutorType.Local)
 
         usgs_username = os.getenv("USGS_USERNAME")
         usgs_password = os.getenv("USGS_PASSWORD")
@@ -56,23 +99,14 @@ class Fetch(PipelineStage):
                 datasets.append("ECOSTRESS_ECO1BGEO")
 
         for dataset in datasets:
+
+            executor = self.create_executor(ExecutorType.Local)
+
             fetched_scenes[dataset] = []
             failed_scenes[dataset] = []
 
             # for each dataset
             scenes_csv_path = os.path.join(self.get_working_directory(),"%s_scenes.csv"%(dataset))
-
-            prune_suffixes = []
-            required_bands = self.get_spec().get_bands_for_dataset(dataset)
-            for band in range(1,12):
-                if band == 10 and "ST" in required_bands:
-                    # workaround - TODO need a cleaner solution
-                    # do not prune *B10.TIF, we need ST_B10.TIF
-                    continue
-                if str(band) not in required_bands:
-                    prune_suffixes.append("B%d.TIF"%band)
-
-            self.get_logger().info("Configured pruning of downloaded files with suffixes %s" % ",".join(prune_suffixes))
 
             custom_env = {
                     "USGS_USERNAME": usgs_username,
@@ -88,8 +122,25 @@ class Fetch(PipelineStage):
             # for each dataset, get a list of scenes (written to CSV) and download all scenes
 
             list_script = os.path.join(os.path.split(__file__)[0],"fetch_list.sh")
-            executor.queue_task(self.get_stage_id(),list_script,custom_env,self.get_working_directory())
+            list_task_id = executor.queue_task(self.get_stage_id(),list_script,custom_env,self.get_working_directory())
             executor.wait_for_tasks()
+            if not executor.get_task_result(list_task_id):
+                self.get_logger().error(
+                    "Failed to get list of scenes for dataset: %s" % dataset)
+                continue
+            executor.clear()
+
+            # work out which files we can safely prune from the downloaded data
+            # and prepare a list of their suffixes
+            prune_suffixes = []
+            required_bands = self.get_spec().get_bands_for_dataset(dataset)
+            suffix_mapping = suffix_map.get(dataset, {})
+            for band_name in suffix_mapping:
+                if band_name not in required_bands:
+                    prune_suffixes.append(suffix_mapping[band_name])
+
+            self.get_logger().info(
+                "Configured pruning of downloaded files with suffixes: %s" % ",".join(prune_suffixes))
 
             download_script = os.path.join(os.path.split(__file__)[0], "fetch_download.sh")
             scene_count = 0
@@ -105,13 +156,16 @@ class Fetch(PipelineStage):
                         "USGS_DATADIR": self.output_path,
                         "CATALOG": catalog,
                         "DATASET": dataset,
-                        "SCENE": scene,
-                        "PRUNE_SUFFIXES": ",".join(prune_suffixes)
+                        "SCENE": scene
                     }
+                    if len(prune_suffixes) > 0:
+                        custom_env["PRUNE_SUFFIXES"] = '--prune-suffixes="'+",".join(prune_suffixes)+'"'
                     scene_count += 1
                     executor.queue_task(self.get_stage_id(), download_script, custom_env, self.get_working_directory(), description=dataset+"/"+scene)
+
             self.get_logger().info("Attempting download of %d scenes for dataset %s" % (scene_count,dataset))
             executor.wait_for_tasks()
+            executor.clear()
 
             # check that the scenes have downloaded OK
             with open(scenes_csv_path) as scenes_f:

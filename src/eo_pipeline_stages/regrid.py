@@ -44,11 +44,8 @@ class Regrid(PipelineStage):
             raise PipelineStageException("regrid", "No fetched scenes from a previous stage to regrid")
 
         cfg = self.get_configuration()
-        executor = cfg.get("executor","local")
-        if executor == "local":
-            executor = self.create_executor(ExecutorType.Local)
-        else:
-            executor = self.create_executor(ExecutorType.Slurm)
+
+        executor = self.create_executor()
 
         fetched_scenes = input_context["fetched_scenes"]
         regridded_scene_folders = {}
