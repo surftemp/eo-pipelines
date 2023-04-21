@@ -58,8 +58,10 @@ class Fetch(PipelineStage):
     # by default run 4 download sub-processes, making sure they don't start
     # within 5 seconds of each other (
     default_execution_settings = {
-        "nr_threads": 4,
-        "stagger_time": 5
+        "local": {
+            "nr_threads": 4,
+            "stagger_time": 5
+        }
     }
 
     def __init__(self, stage_id, cfg, spec, environment):
