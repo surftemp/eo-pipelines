@@ -55,6 +55,13 @@ class Fetch(PipelineStage):
 
     fetch_stage_count = 0
 
+    # by default run 4 download sub-processes, making sure they don't start
+    # within 5 seconds of each other (
+    default_execution_settings = {
+        "nr_threads": 4,
+        "stagger_time": 5
+    }
+
     def __init__(self, stage_id, cfg, spec, environment):
         super().__init__(stage_id, "fetch", cfg, spec, environment)
         self.output_path = self.get_configuration().get("output_path", self.get_working_directory())
