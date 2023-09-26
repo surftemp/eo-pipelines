@@ -131,7 +131,7 @@ class Fetch(PipelineStage):
 
             # for each dataset, get a list of scenes (written to CSV) and download all scenes
 
-            list_script = os.path.join(os.path.split(__file__)[0], "fetch_list.sh")
+            list_script = os.path.join(os.path.split(__file__)[0], "usgs_search.sh")
             list_task_id = executor.queue_task(self.get_stage_id(),list_script,custom_env,self.get_working_directory())
             executor.wait_for_tasks()
             if not executor.get_task_result(list_task_id):
@@ -152,7 +152,7 @@ class Fetch(PipelineStage):
             self.get_logger().info(
                 "Configured pruning of downloaded files with suffixes: %s" % ",".join(prune_suffixes))
 
-            download_script = os.path.join(os.path.split(__file__)[0], "fetch_download.sh")
+            download_script = os.path.join(os.path.split(__file__)[0], "usgs_fetch.sh")
             scene_count = 0
             with open(scenes_csv_path) as scenes_f:
                 reader = csv.reader(scenes_f)

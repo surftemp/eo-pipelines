@@ -16,24 +16,29 @@ configuration:
           bands: [ ST,ST_QA ]
     environment:
       working_directory: /home/dev/test
-      conda_path: /home/dev/miniconda3/bin/conda
+      conda_path: /home/dev/anaconda3/condabin/conda
       shell: "/bin/bash"
       echo_stdout: True
 
 nodes:
   n0:
-    type: eo_pipelines:fetch
+    type: eo_pipelines:usgs_search
     properties:
       configuration:
         output_path: /home/dev/test/fetched
-  n1:
-    type: eo_pipelines:regrid
-    properties:
-      configuration:
-        include_angles: False
-        resolution_m: 30
-        nr_threads: 1
-        executor: local
+#  n1:
+#    type: eo_pipelines:fetch
+#    properties:
+#      configuration:
+#        output_path: /home/dev/test/fetched
+#  n2:
+#    type: eo_pipelines:regrid
+#    properties:
+#      configuration:
+#        include_angles: False
+#        resolution_m: 30
+#        nr_threads: 1
+#        executor: local
 
 links:
-  - n0 => n1
+  # - n0 => n1

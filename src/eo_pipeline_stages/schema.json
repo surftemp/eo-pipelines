@@ -11,6 +11,18 @@
         "classname": "configuration.Configuration"
     },
     "node_types": {
+        "usgs_search": {
+            "metadata": {
+                "name": "USGS Search",
+                "description": "Search for Landsat data"
+            },
+            "output_ports": {
+                "output": {
+                    "link_type": "eo_pipelines:usgs_scenelist"
+                }
+            },
+            "classname": "nodes.usgs_search.USGS_Search"
+        },
         "fetch": {
             "metadata": {
                 "name": "USGS Fetch",
@@ -42,6 +54,12 @@
         }
     },
     "link_types": {
+        "usgs_scenelist": {
+            "metadata": {
+                "name": "Lists of USGS scenes",
+                "description": "A dictionary mapping from USGS dataset name to [catalog,dataset,scene-id]"
+            }
+        },
         "raw_sceneset": {
             "metadata": {
                 "name": "Landsat8 raw scenes",
