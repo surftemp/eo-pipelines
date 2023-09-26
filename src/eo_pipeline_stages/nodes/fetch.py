@@ -4,8 +4,8 @@ import csv
 
 from eo_pipelines.pipeline_stage import PipelineStage
 from eo_pipelines.pipeline_stage_utils import format_int, format_date, format_float
-from eo_pipelines.executors.executor_factory import ExecutorFactory, ExecutorType
-from . import VERSION
+from eo_pipelines.executors.executor_factory import ExecutorType
+
 
 # for supported datasets, map from channel name to a unique file suffix
 suffix_map = {
@@ -53,6 +53,7 @@ suffix_map = {
 
 class Fetch(PipelineStage):
 
+    VERSION = "0.0.2"
     fetch_stage_count = 0
 
     # by default run 4 download sub-processes, making sure they don't start
@@ -64,10 +65,10 @@ class Fetch(PipelineStage):
         }
     }
 
-    def __init__(self, stage_id, cfg, spec, environment):
-        super().__init__(stage_id, "fetch", cfg, spec, environment)
+    def __init__(self, node_services):
+        super().__init__(node_services.get_node_id(), "fetch", node_services.get_property("configuration"), node_services.get_configuration().get_spec(),  node_services.get_configuration().get_environment())
         self.output_path = self.get_configuration().get("output_path", self.get_working_directory())
-        self.get_logger().info("eo_pipeline_stages.Fetch %s" % VERSION)
+        self.get_logger().info("eo_pipeline_stages.Fetch %s" % Fetch.VERSION)
 
     def get_output_types(self):
         return { "output":"usgs_imagery" }
@@ -84,7 +85,7 @@ class Fetch(PipelineStage):
             "OUTPUT_PATH": self.output_path
         }
 
-    def run(self,input_context):
+    def execute(self,inputs):
 
         # input_context is not used
 
@@ -130,7 +131,7 @@ class Fetch(PipelineStage):
 
             # for each dataset, get a list of scenes (written to CSV) and download all scenes
 
-            list_script = os.path.join(os.path.split(__file__)[0],"fetch_list.sh")
+            list_script = os.path.join(os.path.split(__file__)[0], "fetch_list.sh")
             list_task_id = executor.queue_task(self.get_stage_id(),list_script,custom_env,self.get_working_directory())
             executor.wait_for_tasks()
             if not executor.get_task_result(list_task_id):
@@ -172,9 +173,10 @@ class Fetch(PipelineStage):
                     scene_count += 1
                     executor.queue_task(self.get_stage_id(), download_script, custom_env, self.get_working_directory(), description=dataset+"/"+scene)
 
-            self.get_logger().info("Attempting download of %d scenes for dataset %s" % (scene_count,dataset))
-            executor.wait_for_tasks()
-            executor.clear()
+            if scene_count:
+                self.get_logger().info("Attempting download of %d scenes for dataset %s" % (scene_count,dataset))
+                executor.wait_for_tasks()
+                executor.clear()
 
             # check that the scenes have downloaded OK
             with open(scenes_csv_path) as scenes_f:

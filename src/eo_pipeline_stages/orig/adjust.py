@@ -1,25 +1,21 @@
 
 import os
 
-from eo_pipelines.pipeline_stage import PipelineStage
+from packages.eo_pipeline_stages.nodes.pipeline_stage import PipelineStage
 from eo_pipelines.pipeline_exceptions import PipelineStageException
-from eo_pipelines.executors.executor_factory import ExecutorFactory, ExecutorType
-from . import VERSION
+from eo_pipelines.executors.executor_factory import ExecutorType
+from packages.eo_pipeline_stages import VERSION
 
-class Elevation(PipelineStage):
+class Adjust(PipelineStage):
 
     def __init__(self, stage_id, cfg, spec, environment):
-        super().__init__(stage_id, "elevation", cfg, spec, environment)
+        super().__init__(stage_id, "adjust", cfg, spec, environment)
         self.output_path = self.get_configuration()\
             .get("output_path", os.path.join(self.get_working_directory(),"outputs"))
-        self.dem_path = self.get_configuration() \
-            .get("dem_path",None)
-        if not self.dem_path:
-            raise PipelineStageException(stage_id,"dem_path not specified in configuration")
-        self.get_logger().info("eo_pipeline_stages.Elevation %s" % VERSION)
+        self.get_logger().info("eo_pipeline_stages.Adjust %s" % VERSION)
 
     def get_parameters(self):
-        return { "OUTPUT_PATH": self.output_path, "DEM_PATH": self.dem_path }
+        return { "OUTPUT_PATH": self.output_path }
 
     def get_input_types(self):
         return {"input": "netcdf4_yx"}
@@ -38,18 +34,16 @@ class Elevation(PipelineStage):
 
         scene_folders = input_context["scene_folders"]
         output_context = {"scene_folders": {}}
-        os.makedirs(self.output_path,exist_ok=True)
 
         for dataset in scene_folders:
             output_folder = os.path.join(self.output_path,dataset)
-            os.makedirs(output_folder, exist_ok=True)
 
             custom_env = {
                 "INPUT_PATH": scene_folders[dataset],
                 "OUTPUT_PATH": output_folder,
-                "DEM_PATH": self.dem_path
+                "ADJUST_OPTIONS": "--simplify-coords"
             }
-            script = os.path.join(os.path.split(__file__)[0],"elevation.sh")
+            script = os.path.join(os.path.split(__file__)[0], "adjust.sh")
             task_id = executor.queue_task(self.get_stage_id(),script,custom_env,self.get_working_directory())
             executor.wait_for_tasks()
 

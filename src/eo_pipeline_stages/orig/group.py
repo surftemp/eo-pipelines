@@ -2,10 +2,10 @@
 import os
 import json
 
-from eo_pipelines.pipeline_stage import PipelineStage
+from packages.eo_pipeline_stages.nodes.pipeline_stage import PipelineStage
 from eo_pipelines.pipeline_exceptions import PipelineStageException
-from eo_pipelines.executors.executor_factory import ExecutorFactory, ExecutorType
-from . import VERSION
+from eo_pipelines.executors.executor_factory import ExecutorType
+from packages.eo_pipeline_stages import VERSION
 
 class Group(PipelineStage):
 
@@ -47,7 +47,7 @@ class Group(PipelineStage):
             "GROUPING_SPEC_PATH": grouping_spec_file_path,
             "OUTPUT_PATH": self.output_path
         }
-        script = os.path.join(os.path.split(__file__)[0],"group.sh")
+        script = os.path.join(os.path.split(__file__)[0], "group.sh")
         task_id = executor.queue_task(self.get_stage_id(),script,custom_env,self.get_working_directory())
         executor.wait_for_tasks()
 

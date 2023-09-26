@@ -1,0 +1,58 @@
+{
+    "id": "eo_pipelines",
+    "metadata": {
+        "name": "EO Pipelines",
+        "version": "0.0.1",
+        "description": "package for fetching and manipulating EO data"
+    },
+    "executor": "python",
+    "dependencies": [],
+    "configuration": {
+        "classname": "configuration.Configuration"
+    },
+    "node_types": {
+        "fetch": {
+            "metadata": {
+                "name": "USGS Fetch",
+                "description": "Fetch Landsat data"
+            },
+            "output_ports": {
+                "output": {
+                    "link_type": "eo_pipelines:raw_sceneset"
+                }
+            },
+            "classname": "nodes.fetch.Fetch"
+        },
+        "regrid": {
+            "metadata": {
+                "name": "Regrid",
+                "description": "Convert scenes to netcdf and regrid"
+            },
+            "input_ports": {
+                "input": {
+                    "link_type": "eo_pipelines:raw_sceneset"
+                }
+            },
+            "output_ports": {
+                "output": {
+                    "link_type": "eo_pipelines:netcdf_sceneset"
+                }
+            },
+            "classname": "nodes.regrid.Regrid"
+        }
+    },
+    "link_types": {
+        "raw_sceneset": {
+            "metadata": {
+                "name": "Landsat8 raw scenes",
+                "description": "A set of raw landsat8 scenes"
+            }
+        },
+        "netcdf_sceneset": {
+            "metadata": {
+                "name": "Landsat imported scenes",
+                "description": "A set of landsat scenes imported to netcdf"
+            }
+        }
+    }
+}

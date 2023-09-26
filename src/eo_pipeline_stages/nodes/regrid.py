@@ -2,21 +2,25 @@ import os.path
 
 from eo_pipelines.pipeline_stage import PipelineStage
 from eo_pipelines.pipeline_exceptions import PipelineStageException
-from eo_pipelines.executors.executor_factory import ExecutorFactory, ExecutorType
-from eo_pipelines.pipeline_stage_utils import format_int, format_date, format_float
-from . import VERSION
+from eo_pipelines.pipeline_stage_utils import format_int, format_float
+
 
 class Regrid(PipelineStage):
 
+    VERSION = "0.0.2"
+
     DEFAULT_RESOLUTION = 50
 
-    def __init__(self, stage_id, cfg, spec, environment):
-        super().__init__(stage_id, "regrid", cfg, spec, environment)
+    def __init__(self, node_services):
+        super().__init__(node_services.get_node_id(), "regrid", node_services.get_property("configuration"),
+                         node_services.get_configuration().get_spec(),
+                         node_services.get_configuration().get_environment())
+        self.node_services = node_services
         self.resolution = self.get_configuration().get("resolution_m", Regrid.DEFAULT_RESOLUTION)
         self.output_path = self.get_configuration().get("output_path", self.get_working_directory())
         self.include_angles = self.get_configuration().get("include_angles", False)
         self.export_oli_as = self.get_configuration().get("export_oli_as", "corrected_reflectance")
-        self.get_logger().info("eo_pipeline_stages.Regrid %s" % VERSION)
+        self.get_logger().info("eo_pipeline_stages.Regrid %s" % Regrid.VERSION)
 
     def get_input_types(self):
         return { "input":"usgs_imagery" }
@@ -36,9 +40,9 @@ class Regrid(PipelineStage):
             "EXPORT_OLI_AS": self.export_oli_as
         }
 
-    def run(self, input_context):
+    def execute(self, inputs):
 
-        input_context = input_context["input"]
+        input_context = inputs["input"]
 
         if "fetched_scenes" not in input_context:
             raise PipelineStageException("regrid", "No fetched scenes from a previous stage to regrid")

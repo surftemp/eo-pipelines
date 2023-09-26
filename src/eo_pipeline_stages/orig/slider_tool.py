@@ -2,10 +2,10 @@
 import os.path
 import random
 from yaml import dump
-from eo_pipelines.pipeline_stage import PipelineStage
+from packages.eo_pipeline_stages.nodes.pipeline_stage import PipelineStage
 from eo_pipelines.pipeline_exceptions import PipelineStageException
-from eo_pipelines.executors.executor_factory import ExecutorFactory, ExecutorType
-from . import VERSION
+from eo_pipelines.executors.executor_factory import ExecutorType
+from packages.eo_pipeline_stages import VERSION
 
 class SliderTool(PipelineStage):
 

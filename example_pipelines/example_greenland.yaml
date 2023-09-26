@@ -1,0 +1,39 @@
+configuration:
+  eo_pipelines:
+
+    spec:
+      lat_min: "64.57.21N"
+      lat_max: "64.57.46N"
+      lon_min: "49.57.31W"
+      lon_max: "49.56.52W"
+      start_date: 2013-01-01
+      end_date: 2013-03-31
+      max_cloud_cover_fraction: 0.05
+      datasets:
+        LANDSAT_OT_C2_L1:
+          bands: [ 1,2,3,4,5,6,7,8,9,10,11,QA_PIXEL ]
+        LANDSAT_OT_C2_L2:
+          bands: [ ST,ST_QA ]
+    environment:
+      working_directory: /home/dev/test
+      conda_path: /home/dev/miniconda3/bin/conda
+      shell: "/bin/bash"
+      echo_stdout: True
+
+nodes:
+  n0:
+    type: eo_pipelines:fetch
+    properties:
+      configuration:
+        output_path: /home/dev/test/fetched
+  n1:
+    type: eo_pipelines:regrid
+    properties:
+      configuration:
+        include_angles: False
+        resolution_m: 30
+        nr_threads: 1
+        executor: local
+
+links:
+  - n0 => n1
