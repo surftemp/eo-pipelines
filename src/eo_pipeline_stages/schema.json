@@ -23,22 +23,27 @@
             },
             "classname": "nodes.usgs_search.USGS_Search"
         },
-        "fetch": {
+        "usgs_fetch": {
             "metadata": {
                 "name": "USGS Fetch",
                 "description": "Fetch Landsat data"
+            },
+            "input_ports": {
+                "input": {
+                    "link_type": "eo_pipelines:usgs_scenelist"
+                }
             },
             "output_ports": {
                 "output": {
                     "link_type": "eo_pipelines:raw_sceneset"
                 }
             },
-            "classname": "nodes.fetch.Fetch"
+            "classname": "nodes.usgs_fetch.Fetch"
         },
-        "regrid": {
+        "usgs_import": {
             "metadata": {
-                "name": "Regrid",
-                "description": "Convert scenes to netcdf and regrid"
+                "name": "Import",
+                "description": "Import USGS Landsat scenes to netcdf"
             },
             "input_ports": {
                 "input": {
@@ -50,7 +55,24 @@
                     "link_type": "eo_pipelines:netcdf_sceneset"
                 }
             },
-            "classname": "nodes.regrid.Regrid"
+            "classname": "nodes.usgs_import.Import"
+        },
+        "usgs_group": {
+            "metadata": {
+                "name": "Group",
+                "description": "Group scenes from different datasets into one file"
+            },
+            "input_ports": {
+                "input": {
+                    "link_type": "eo_pipelines:netcdf_sceneset"
+                }
+            },
+            "output_ports": {
+                "output": {
+                    "link_type": "eo_pipelines:netcdf_sceneset"
+                }
+            },
+            "classname": "nodes.usgs_group.Group"
         }
     },
     "link_types": {

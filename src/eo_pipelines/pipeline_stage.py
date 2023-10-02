@@ -33,7 +33,7 @@ class PipelineStage:
     def __init__(self, stage_id, stage_type, configuration, spec, environment):
         self.__stage_id = stage_id
         self.__stage_type = stage_type
-        self.__configuration = configuration
+        self.__configuration = configuration or {}
         self.__spec = spec
         self.__environment = environment
         self.__execution_settings = {}
@@ -42,9 +42,7 @@ class PipelineStage:
         self.__working_directory = self.__configuration.get("working_directory",
                                          os.path.join(self.__environment.get("working_directory","/tmp"), self.__stage_id))
         os.makedirs(self.__working_directory, exist_ok=True)
-        self.__input_context_path = os.path.join(self.__working_directory, "input_context.json")
-        self.__parameters_context_path = os.path.join(self.__working_directory, "parameters_context.json")
-        self.__output_context_path = os.path.join(self.__working_directory, "output_context.json")
+
         self.__logger = logging.getLogger(self.__stage_id)
 
         self.__logger.info("Created %s stage id=%s, dir=%s"%(self.__stage_type,self.__stage_id,self.__working_directory))
@@ -74,19 +72,6 @@ class PipelineStage:
         execution_settings = merge_dictionaries_recursive(override_execution_settings,self.__execution_settings)
         return self.__executor_factory.create_executor(executor_type, self.get_environment(), execution_settings)
 
-    def get_input_types(self):
-        return {}
-
-    def get_output_types(self):
-        return {}
-
-    def set_inputs(self,inputs):
-        # dictionary mapping input to "stage-id:output"
-        self.inputs = inputs
-
-    def get_inputs(self):
-        return self.inputs
-
     def get_stage_id(self):
         return self.__stage_id
 
@@ -99,40 +84,10 @@ class PipelineStage:
     def __repr__(self):
         return self.__stage_id+"/"+self.__stage_type
 
-    def run(self,input_context):
+    def execute(self,input_context):
         raise NotImplementedError()
 
     def get_parameters(self):
         return {}
 
-    def can_skip(self, input_context):
-        if os.path.exists(self.__input_context_path) \
-                and os.path.exists(self.__output_context_path)\
-                and os.path.exists(self.__parameters_context_path):
-
-            with open(self.__input_context_path) as input_f:
-                last_input_context = json.loads(input_f.read())
-                if input_context != last_input_context:
-                    return False
-
-            with open(self.__parameters_context_path) as parameters_f:
-                last_parameters = json.loads(parameters_f.read())
-                if self.get_parameters() != last_parameters:
-                    return False
-            return True
-        return False
-
-    def write_context(self, input_context, output_context):
-        with open(self.__input_context_path,"w") as input_f:
-            input_f.write(json.dumps(input_context))
-        with open(self.__parameters_context_path,"w") as input_f:
-            input_f.write(json.dumps(self.get_parameters()))
-        with open(self.__output_context_path,"w") as results_f:
-            results_f.write(json.dumps(output_context))
-
-    def get_output_context(self):
-        if os.path.exists(self.__output_context_path):
-            with open(self.__output_context_path) as results_f:
-                return json.loads(results_f.read())
-        return None
 

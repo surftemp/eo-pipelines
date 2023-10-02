@@ -43,13 +43,10 @@ class USGS_Search(PipelineStage):
     }
 
     def __init__(self, node_services):
-        super().__init__(node_services.get_node_id(), "fetch", node_services.get_property("configuration"), node_services.get_configuration().get_spec(),  node_services.get_configuration().get_environment())
+        super().__init__(node_services.get_node_id(), "search", node_services.get_property("configuration"), node_services.get_configuration().get_spec(),  node_services.get_configuration().get_environment())
         self.node_services = node_services
         self.output_path = self.get_configuration().get("output_path", self.get_working_directory())
         self.get_logger().info("eo_pipeline_stages.Fetch %s" % USGS_Search.VERSION)
-
-    def get_output_types(self):
-        return { "output":"usgs_imagery" }
 
     def get_parameters(self):
         return {
@@ -129,7 +126,7 @@ class USGS_Search(PipelineStage):
                 with open(scenes_csv_path) as scenes_f:
                     rdr = csv.reader(scenes_f)
                     for line in rdr:
-                        scenes.append(line)
+                        scenes.append(line[2])
                 scene_list[dataset] = scenes
             except:
                 errors += 1
