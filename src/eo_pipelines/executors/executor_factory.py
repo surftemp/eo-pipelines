@@ -57,9 +57,7 @@ class ExecutorFactory:
     def __init__(self):
         pass
 
-    def create_executor(self,executor_type,environment,execution_settings):
-        executor_settings = execution_settings.get(
-            ExecutorType.get_executor_type_name(executor_type),{})
+    def create_executor(self,executor_type,environment,executor_settings):
         if executor_type == ExecutorType.Local:
             return LocalExecutor(environment, executor_settings)
         elif executor_type == ExecutorType.Slurm:

@@ -36,9 +36,13 @@ class PipelineStage:
         self.__configuration = configuration or {}
         self.__spec = spec
         self.__environment = environment
-        self.__execution_settings = {}
+        self.__execution_settings = self.__configuration.get("executor_settings",{})
         self.__executor_factory = None
-        self.__default_executor_type = ExecutorType.Local
+        if "executor_type" in self.__execution_settings:
+            executor_type_name = self.__execution_settings["executor_type"]
+            self.__default_executor_type = ExecutorType.parse_executor_type_name(executor_type_name)
+        else:
+            self.__default_executor_type = ExecutorType.Local
         self.__working_directory = self.__configuration.get("working_directory",
                                          os.path.join(self.__environment.get("working_directory","/tmp"), self.__stage_id))
         os.makedirs(self.__working_directory, exist_ok=True)
@@ -48,14 +52,8 @@ class PipelineStage:
         self.__logger.info("Created %s stage id=%s, dir=%s"%(self.__stage_type,self.__stage_id,self.__working_directory))
         self.__executor_factory = ExecutorFactory()
 
-    def set_execution_settings(self, execution_settings):
-        self.__execution_settings = execution_settings
-
     def set_executor_factory(self, executor_factory):
         self.__executor_factory = executor_factory
-
-    def set_default_executor_type(self, default_executor_type):
-        self.__default_executor_type = ExecutorType.parse_executor_type_name(default_executor_type)
 
     def get_configuration(self):
         return self.__configuration
@@ -66,11 +64,12 @@ class PipelineStage:
     def get_environment(self):
         return self.__environment
 
-    def create_executor(self, executor_type=None, override_execution_settings=None):
+    def create_executor(self, executor_type=None):
         if executor_type is None:
             executor_type = self.__default_executor_type
-        execution_settings = merge_dictionaries_recursive(override_execution_settings,self.__execution_settings)
-        return self.__executor_factory.create_executor(executor_type, self.get_environment(), execution_settings)
+        executor_name = ExecutorType.get_executor_type_name(executor_type)
+        executor_settings = self.__execution_settings.get(executor_name,{})
+        return self.__executor_factory.create_executor(executor_type, self.get_environment(), executor_settings)
 
     def get_stage_id(self):
         return self.__stage_id

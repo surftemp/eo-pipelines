@@ -4,28 +4,32 @@ Stage implementation using the eo-pipelines API
 
 ## Dependencies
 
-Requires the eo_pipelines library - https://github.com/surftemp/eo-pipelines
+Requires the hyrrokkin library - https://github.com/visualtopology/hyrrokkin
 
 ## available stages
 
 Pipleline stages currently supported:
 
-stage_name | purpose
------------|--------
-**eo_pipeline_stages.fetch.Fetch** | find and download scenes using the usgs tool
-**eo_pipeline_stages.regrid.Regrid** | regrid scenes onto a regular latlon grid and export to netcdf4 
-**eo_pipeline_stages.group.Group** | combine/stack groups of regridded scenes from the same orbit (also across different datasets)
-**eo_pipeline_stages.time_stacker.TimeStacker** | Stack scenes along the time dimension
-**eo_pipeline_stages.slider_tool.SliderTool** | plot scenes to html using slider tool
+stage_name | purpose | required conda environment
+-----------|-------- | --------------------------
+**eo_pipelines:usgs_search** | find scenes using the usgs tool | usgs_env
+**eo_pipelines:usgs_fetch** | download scenes using the usgs_download tool | usgs_env
+**eo_pipelines:usgs_import** | convert scenes to netcdf4 | rioxarray_env
+**eo_pipelines:usgs_group** | combine/stack groups of regridded scenes from the same orbit (also across different datasets) | landsat2nc_env
 
-* for **fetch_scenes**, you'll need usgs installed in a conda environment called usgs_env.  See https://github.com/surftemp/usgs
+## Required conda environments
 
-* for **regrid_scenes** and **group_scenes**, you'll need landsat2nc installed in a conda environment called landsat2nc_env.  See https://github.com/surftemp/landsat2nc
+Each of the above stages requires a conda environment and specific tools installed into it.
 
-* for **slider_tool**, you'll need slider_tool installed in a conda environment called slider_tool_env.  See https://github.com/surftemp/slider_tool
+### usgs_env 
 
-## supported combinations of stages
+See https://github.com/surftemp/usgs
 
-Currently this is quite restricted to sequences:
+### rioxarray_env
 
-`fetch [ -> regrid [ -> group [ -> slider_tool ] ] ]`
+See https://github.com/surftemp/landsat_importer
+
+### landsat2nc_env
+
+See https://github.com/surftemp/landsat2nc
+

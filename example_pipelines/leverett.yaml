@@ -2,12 +2,12 @@ configuration:
   eo_pipelines:
 
     spec:
-      lat_min: "72.35.56N"
-      lat_max: "64.44.52N"
-      lon_min: "54.46.05W"
-      lon_max: "53.49.56W"
-      start_date: 2021-06-01
-      end_date: 2021-08-31
+      lat_min: "67.01.12N"
+      lat_max: "67.04.36N"
+      lon_min: "50.09.51W"
+      lon_max: "49.55.36W"
+      start_date: 2013-01-01
+      end_date: 2023-10-01
       max_cloud_cover_fraction: 0.1
       datasets:
         LANDSAT_OT_C2_L1:
