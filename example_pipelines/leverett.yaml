@@ -15,7 +15,7 @@ configuration:
         LANDSAT_OT_C2_L2:
           bands: [ ST,ST_QA ]
     environment:
-      working_directory: /gws/nopw/j04/lake_icesheet/pipeline_test
+      working_directory: /gws/nopw/j04/lake_icesheet/leverett
       conda_path: /home/users/niallmcc/miniconda3/bin/conda
       shell: "/bin/bash"
       echo_stdout: True
@@ -25,12 +25,12 @@ nodes:
     type: eo_pipelines:usgs_search
     properties:
       configuration:
-        output_path: /gws/nopw/j04/lake_icesheet/pipeline_test/list
+        output_path: /gws/nopw/j04/lake_icesheet/leverett/list
   n1:
     type: eo_pipelines:usgs_fetch
     properties:
       configuration:
-        output_path: /gws/nopw/j04/lake_icesheet/pipeline_test/fetched
+        output_path: /gws/nopw/j04/lake_icesheet/leverett/fetched
   n2:
     type: eo_pipelines:usgs_import
     properties:
@@ -39,12 +39,12 @@ nodes:
           executor: local
           local:
             nr_threads: 4
-        output_path: /gws/nopw/j04/lake_icesheet/pipeline_test/imported
+        output_path: /gws/nopw/j04/lake_icesheet/leverett/imported
   n3:
     type: eo_pipelines:usgs_group
     properties:
       configuration:
-        output_path: /gws/nopw/j04/lake_icesheet/pipeline_test/grouped
+        output_path: /gws/nopw/j04/lake_icesheet/leverett/grouped
 
 links:
   - n0 => n1
