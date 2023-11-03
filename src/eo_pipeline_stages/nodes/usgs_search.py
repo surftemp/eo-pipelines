@@ -49,6 +49,13 @@ class USGS_Search(PipelineStage):
         self.get_logger().info("eo_pipeline_stages.Fetch %s" % USGS_Search.VERSION)
 
     def get_parameters(self):
+        row_filter = self.get_configuration().get("row","")
+        if row_filter:
+            row_filter = "--row "+row_filter
+        path_filter = self.get_configuration().get("path","")
+        if path_filter:
+            path_filter = "--path "+path_filter
+
         return {
             "LAT_MIN": format_float(self.get_spec().get_lat_min()),
             "LAT_MAX": format_float(self.get_spec().get_lat_max()),
@@ -57,8 +64,11 @@ class USGS_Search(PipelineStage):
             "START_DATE": format_date(self.get_spec().get_start_date()),
             "END_DATE": format_date(self.get_spec().get_end_date()),
             "MAX_CLOUD_COVER_PCT": format_int(int(self.get_spec().get_max_cloud_cover_fraction() * 100)),
-            "OUTPUT_PATH": self.output_path
+            "OUTPUT_PATH": self.output_path,
+            "ROW_FILTER": row_filter,
+            "PATH_FILTER": path_filter
         }
+
 
     def execute(self,inputs):
 
