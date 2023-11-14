@@ -22,11 +22,10 @@
 
 import os
 import logging
-import json
 import os.path
+import time
 
 from eo_pipelines.executors.executor_factory import ExecutorType, ExecutorFactory
-from .utils.merge_dictionaries_recursive import merge_dictionaries_recursive
 
 class PipelineStage:
 
@@ -83,7 +82,20 @@ class PipelineStage:
     def __repr__(self):
         return self.__stage_id+"/"+self.__stage_type
 
-    def execute(self,input_context):
+    def execute(self,inputs):
+        start_time = time.time()
+        self.__logger.info("Executing stage %s " % self.__stage_type)
+        try:
+            result = self.execute_stage(inputs)
+        except Exception as ex:
+            duration = int(time.time() - start_time)
+            self.__logger.info("Failed stage %s with %s (%d seconds)" % (self.__stage_type, str(ex), duration))
+            raise
+        duration = int(time.time() - start_time)
+        self.__logger.info("Executed %s stage (%d seconds)" % (self.__stage_type, duration))
+        return result
+
+    def execute_stage(self, inputs):
         raise NotImplementedError()
 
     def get_parameters(self):

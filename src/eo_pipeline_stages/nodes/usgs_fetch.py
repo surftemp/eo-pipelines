@@ -72,7 +72,7 @@ class Fetch(PipelineStage):
         self.get_logger().info("eo_pipeline_stages.Fetch %s" % Fetch.VERSION)
 
 
-    def execute(self,inputs):
+    def execute_stage(self,inputs):
 
         usgs_username = os.getenv("USGS_USERNAME")
         usgs_password = os.getenv("USGS_PASSWORD")

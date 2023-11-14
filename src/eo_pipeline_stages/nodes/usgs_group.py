@@ -21,7 +21,7 @@ class Group(PipelineStage):
         dataset_bands = {dataset: self.get_spec().get_bands_for_dataset(dataset) for dataset in all_datasets}
         return { "DATASET_BANDS": dataset_bands, "OUTPUT_PATH": self.output_path }
 
-    def execute(self, inputs):
+    def execute_stage(self, inputs):
 
         output_paths = {}
         for input_scenes in inputs["input"]:

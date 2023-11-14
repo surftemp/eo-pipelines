@@ -29,7 +29,7 @@ class Import(PipelineStage):
             "LON_MAX": format_float(self.get_spec().get_lon_max())
         }
 
-    def execute(self, inputs):
+    def execute_stage(self, inputs):
 
         executor = self.create_executor(ExecutorType.Local)
 

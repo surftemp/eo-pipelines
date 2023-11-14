@@ -81,7 +81,7 @@ class ExecutorThread(threading.Thread):
 
 class LocalExecutor(Executor):
 
-    def __init__(self,environment, stage_configuration={}):
+    def __init__(self, environment, stage_configuration={}):
         self.logger = logging.getLogger("LocalExecutor")
         self.shell = environment.get("shell", "/bin/bash")
         self.conda_path = environment.get("conda_path", "~/miniconda3/bin/conda")

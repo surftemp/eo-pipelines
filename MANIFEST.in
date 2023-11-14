@@ -1,1 +1,2 @@
 include src/eo_pipeline_stages/*.sh
+include src/eo_pipeline_stages/schema.json

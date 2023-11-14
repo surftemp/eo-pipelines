@@ -70,7 +70,7 @@ class USGS_Search(PipelineStage):
         }
 
 
-    def execute(self,inputs):
+    def execute_stage(self,inputs):
 
         usgs_username = os.getenv("USGS_USERNAME")
         usgs_password = os.getenv("USGS_PASSWORD")
