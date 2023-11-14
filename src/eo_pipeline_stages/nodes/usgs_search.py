@@ -51,10 +51,10 @@ class USGS_Search(PipelineStage):
     def get_parameters(self):
         row_filter = self.get_configuration().get("row","")
         if row_filter:
-            row_filter = "--row "+row_filter
+            row_filter = "--row "+str(row_filter)
         path_filter = self.get_configuration().get("path","")
         if path_filter:
-            path_filter = "--path "+path_filter
+            path_filter = "--path "+str(path_filter)
 
         return {
             "LAT_MIN": format_float(self.get_spec().get_lat_min()),
