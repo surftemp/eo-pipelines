@@ -1,31 +1,26 @@
-# landsat_importer
+# rioxarray_pipeline_tools
 
 import landsat 8/9 scenes to netcdf4 
 
 ## Installation
 
-Set up an anaconda environment
-
 ```
-conda env create -f environment.yml
+git clone git@github.com:surftemp/eo-pipelines.git
+cd eo-pipelines/environments/rioxarray
+conda env create -f rioxarray_env.yml
 conda activate rioxarray_env
+pip install -e .
 ```
 
-Clone this repo and install it
+## Example Usage
+
+Convert a single landsat scene, all bands
 
 ```
-git clone git@github.com:surftemp/landsat_importer.git
-cd landsat_importer
-pip install .
+run_landsat_importer <path_to_landsat_scene_metadata_file> <output_netcdf4_path>
 ```
 
-## Usage
 
-Convert scene, all bands
-
-```
-run_landsat_importer <path_to_landsat_scene> <output_netcdf4_path>
-```
 
 
 
