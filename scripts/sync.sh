@@ -1,18 +1,22 @@
 #!/bin/bash
 
+# copy relevant files to JASMIN
+
 rootfolder=`dirname $0`/..
+username=$1
+destfolder=$2
 
-rsync -avr $rootfolder/src niallmcc@login2.jasmin.ac.uk:/home/users/niallmcc/github/eo-pipeline-stages
-rsync -avr $rootfolder/example_pipelines niallmcc@login2.jasmin.ac.uk:/home/users/niallmcc/github/eo-pipeline-stages
-rsync -avr $rootfolder/pyproject.toml niallmcc@login2.jasmin.ac.uk:/home/users/niallmcc/github/eo-pipeline-stages
-rsync -avr $rootfolder/setup.cfg niallmcc@login2.jasmin.ac.uk:/home/users/niallmcc/github/eo-pipeline-stages
-rsync -avr $rootfolder/MANIFEST.in niallmcc@login2.jasmin.ac.uk:/home/users/niallmcc/github/eo-pipeline-stages
+if [ -z ${username} ] || [ -z ${destfolder} ];
+then
+  echo provide the username and destination folder on JASMIN as arguments
+else
+  rsync -avr $rootfolder/src $username@login2.jasmin.ac.uk:$destfolder
+  rsync -avr $rootfolder/example_pipelines $username@login2.jasmin.ac.uk:$destfolder
+  rsync -avr $rootfolder/pyproject.toml $username@login2.jasmin.ac.uk:$destfolder
+  rsync -avr $rootfolder/setup.cfg $username@login2.jasmin.ac.uk:$destfolder
+  rsync -avr $rootfolder/MANIFEST.in $username@login2.jasmin.ac.uk:$destfolder
+fi
 
-hyrrokkinfolder=$rootfolder/../hyrrokkin
-
-rsync -avr $hyrrokkinfolder/src niallmcc@login2.jasmin.ac.uk:/home/users/niallmcc/github/hyrrokkin
-rsync -avr $hyrrokkinfolder/pyproject.toml niallmcc@login2.jasmin.ac.uk:/home/users/niallmcc/github/hyrrokkin
-rsync -avr $hyrrokkinfolder/setup.cfg niallmcc@login2.jasmin.ac.uk:/home/users/niallmcc/github/hyrrokkin
 
 
 
