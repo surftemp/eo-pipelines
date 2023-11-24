@@ -104,8 +104,9 @@ class Assembler:
 
         output_ds = xr.open_dataset(self.target_grid,mode="r")
         # add in empty target variables
-        for (name,dims,dtype,attrs,shape) in target_variables:
-            data = np.zeros(shape=shape,dtype=dtype)
+        target_shape = output_ds.lat.shape
+        for (name,dims,dtype,attrs,_) in target_variables:
+            data = np.zeros(shape=target_shape,dtype=dtype)
             if not np.issubdtype(dtype, np.integer):
                 data[...] = np.nan
             da = xr.DataArray(data,name=name,attrs=attrs,dims=dims)
