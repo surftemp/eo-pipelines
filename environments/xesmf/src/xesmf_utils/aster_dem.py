@@ -22,7 +22,7 @@
 import argparse
 import os
 import math
-
+import numpy as np
 import xarray as xr
 
 bash_code1 = """
@@ -57,7 +57,6 @@ exit_with_error() {
     echo
     echo "https://e4ftl01.cr.usgs.gov//ASTER/ASTT/ASTGTM_NC.003/2000.03.01/ASTGTMV003_N64W052_dem.nc"
     echo
-    exit 1
 }
 
 prompt_credentials
@@ -174,20 +173,24 @@ def glue_dem(min_lat, max_lat, min_lon, max_lon, input_folder, output_path):
 
     def preprocessor(ds):
         # ASTER DEM tiles seem to overlap by 1 pixel in both dimensions
-        # remove last latidude and longidude pixels from each tile to ensure they don't overlap
+        # remove last latidude and longitude pixels from each tile to ensure they don't overlap
         # because this causes a problem in the merged DEM dataset
         nlat = len(ds.lat)
         nlon = len(ds.lon)
         ds2 = ds.isel(lat=range(0, nlat - 1), lon=range(0, nlon - 1))
+
+        ds2["lat"] = ds2.lat.astype(np.float32)
+        ds2["lon"] = ds2.lon.astype(np.float32)
+        ds2.set_coords(["lat","lon"])
         return ds2
 
     dem_path = input_folder + "/*.nc"
 
     ds = xr.open_mfdataset(dem_path, preprocess=preprocessor)
-    ds = ds.sel(lat=slice(max_lat,min_lat),lon=slice(min_lon,max_lon))
+    ds = ds.sel(lat=slice(min_lat,max_lat),lon=slice(min_lon,max_lon))
     ds.to_netcdf(output_path, encoding={
         "ASTER_GDEM_DEM": {
-            "zlib": True, "complevel": 5, "chunksizes": [500, 500]
+            "zlib": True, "complevel": 5, "chunksizes": [500, 500], "dtype": "int16"
         }
     })
 
@@ -198,17 +201,21 @@ def main():
     parser.add_argument("--lon-min", type=float, help="minimum longitude, decimal degrees", required=True)
     parser.add_argument("--lat-max", type=float, help="maximum latitude, decimal degrees", required=True)
     parser.add_argument("--lon-max", type=float, help="maximum longitude, decimal degrees", required=True)
-    parser.add_argument("--download-folder", help="folder for storing downloaded dem", required=True)
+    parser.add_argument("--download-folder", help="folder for storing downloaded dem tiles", required=True)
+    parser.add_argument("--skip-download", action="store_true", help="assume all tiles downloaded")
 
-    username = os.getenv("USGS_USERNAME")
-    password = os.getenv("USGS_PASSWORD")
-
-    if not username or not password:
-        raise Exception("Please set USGS_USERNAME and USGS_PASSWORD environment variables")
     args = parser.parse_args()
 
-    os.makedirs(args.download_folder, exist_ok=True)
-    fetch_dem(args.lat_min,args.lat_max,args.lon_min,args.lon_max,args.download_folder,username,password)
+    if not args.skip_download:
+        username = os.getenv("USGS_USERNAME")
+        password = os.getenv("USGS_PASSWORD")
+
+        if not username or not password:
+            raise Exception("Please set USGS_USERNAME and USGS_PASSWORD environment variables")
+
+        os.makedirs(args.download_folder, exist_ok=True)
+        fetch_dem(args.lat_min,args.lat_max,args.lon_min,args.lon_max,args.download_folder,username,password)
+
     glue_dem(args.lat_min,args.lat_max,args.lon_min,args.lon_max,args.download_folder,args.output_path)
 
 if __name__ == '__main__':

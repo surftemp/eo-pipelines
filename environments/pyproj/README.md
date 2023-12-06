@@ -12,6 +12,13 @@ conda activate pyproj_env
 pip install -e .
 ```
 
+## Uninstall
+
+```
+pip uninstall pyproj_pipeline_tools
+```
+
+
 
 
 
