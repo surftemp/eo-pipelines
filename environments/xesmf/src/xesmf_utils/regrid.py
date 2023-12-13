@@ -111,19 +111,31 @@ def regrid(input_path, grid_path, output_path, method, limit=None, max_distance=
             "input_lon3": "%0.6f" % float(ds.lon[0, -1]),
         })
 
-        fingerprint.update({
-            "output_lat0": "%0.6f" % float(grid.lat[0, 0]),
-            "output_lat1": "%0.6f" % float(grid.lat[-1, -1]),
-            "output_lat2": "%0.6f" % float(grid.lat[-1, 0]),
-            "output_lat3": "%0.6f" % float(grid.lat[0, -1])
-        })
+        if len(grid.lat.shape) == 2:
+            fingerprint.update({
+                "output_lat0": "%0.6f" % float(grid.lat[0, 0]),
+                "output_lat1": "%0.6f" % float(grid.lat[-1, -1]),
+                "output_lat2": "%0.6f" % float(grid.lat[-1, 0]),
+                "output_lat3": "%0.6f" % float(grid.lat[0, -1])
+            })
 
-        fingerprint.update({
-            "output_lon0": "%0.6f" % float(grid.lon[0, 0]),
-            "output_lon1": "%0.6f" % float(grid.lon[-1, -1]),
-            "output_lon2": "%0.6f" % float(grid.lon[-1, 0]),
-            "output_lon3": "%0.6f" % float(grid.lon[0, -1])
-        })
+            fingerprint.update({
+                "output_lon0": "%0.6f" % float(grid.lon[0, 0]),
+                "output_lon1": "%0.6f" % float(grid.lon[-1, -1]),
+                "output_lon2": "%0.6f" % float(grid.lon[-1, 0]),
+                "output_lon3": "%0.6f" % float(grid.lon[0, -1])
+            })
+        else:
+            fingerprint.update({
+                "output_lat0": "%0.6f" % float(grid.lat[0]),
+                "output_lat1": "%0.6f" % float(grid.lat[-1]),
+            })
+
+            fingerprint.update({
+                "output_lon0": "%0.6f" % float(grid.lon[0]),
+                "output_lon1": "%0.6f" % float(grid.lon[-1]),
+            })
+
 
         cached_filename = None
 
@@ -178,10 +190,11 @@ def main():
     parser.add_argument("--save-distances-as", type=str,
                         help="output distance to nearest source pixel in m to a variable with this name", default=None)
     parser.add_argument("--cache-folder", help="specify a folder to store and reuse regridders", default=None)
+
     args = parser.parse_args()
 
-    regrid(args.input_data_path, args.target_grid_path, args.output_folder, args.method, args.limit,
-           args.max_distance, args.save_distances_as, args.cache_folder)
+    regrid(input_path=args.input_data_path, grid_path=args.target_grid_path, output_path=args.output_folder, method=args.method, limit=args.limit,
+           max_distance=args.max_distance, output_distances_as=args.save_distances_as, cache_folder=args.cache_folder)
 
 
 if __name__ == '__main__':
