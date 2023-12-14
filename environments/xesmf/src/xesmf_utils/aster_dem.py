@@ -124,6 +124,8 @@ fetch_urls() {
 fetch_urls <<'EDSCEOF'"""
 bash_code2 = """EDSCEOF"""
 
+crs = None
+
 def fetch_dem(min_lat, max_lat, min_lon, max_lon, folder, username, password):
 
     def get_tile_template(lat, lon):
@@ -181,13 +183,21 @@ def glue_dem(min_lat, max_lat, min_lon, max_lon, input_folder, output_path):
 
         ds2["lat"] = ds2.lat.astype(np.float32)
         ds2["lon"] = ds2.lon.astype(np.float32)
+        global crs
+        if crs is None:
+            crs = ds2["crs"]
+        ds2 = ds2.drop_vars("crs")
         ds2.set_coords(["lat","lon"])
+
         return ds2
 
     dem_path = input_folder + "/*.nc"
 
     ds = xr.open_mfdataset(dem_path, preprocess=preprocessor)
     ds = ds.sel(lat=slice(min_lat,max_lat),lon=slice(min_lon,max_lon))
+    global crs
+    if crs is not None:
+        ds["crs"] = crs
     ds.to_netcdf(output_path, encoding={
         "ASTER_GDEM_DEM": {
             "zlib": True, "complevel": 5, "chunksizes": [500, 500], "dtype": "int16"
