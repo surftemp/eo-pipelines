@@ -57,6 +57,23 @@
             },
             "classname": "nodes.usgs_import.Import"
         },
+        "landsat_align": {
+            "metadata": {
+                "name": "Landsat Align",
+                "description": "Align landsat scenes from a specific row/path and optionally aggregate them"
+            },
+            "input_ports": {
+                "input": {
+                    "link_type": "eo_pipelines:netcdf_sceneset"
+                }
+            },
+            "output_ports": {
+                "output": {
+                    "link_type": "eo_pipelines:netcdf_sceneset"
+                }
+            },
+            "classname": "nodes.landsat_align.LandsatAlign"
+        },
         "usgs_group": {
             "metadata": {
                 "name": "Group",

@@ -24,6 +24,7 @@ import os
 import logging
 import os.path
 import time
+import json
 
 from eo_pipelines.executors.executor_factory import ExecutorType, ExecutorFactory
 
@@ -84,15 +85,25 @@ class PipelineStage:
 
     def execute(self,inputs):
         start_time = time.time()
-        self.__logger.info("Executing stage %s " % self.__stage_type)
+        skip = self.get_configuration().get("skip", False)
+        results_path = os.path.join(self.__working_directory,"results.json")
         try:
-            result = self.execute_stage(inputs)
+            if not skip or not os.path.exists(results_path):
+                self.__logger.info("Executing stage %s " % self.__stage_type)
+                result = self.execute_stage(inputs)
+                with open(results_path,"w") as of:
+                    of.write(json.dumps(result))
+                duration = int(time.time() - start_time)
+                self.__logger.info("Executed %s stage (%d seconds)" % (self.__stage_type, duration))
+            else:
+                self.__logger.info("Skipping stage %s " % self.__stage_type)
+                with open(results_path) as f:
+                    result = json.loads(f.read())
         except Exception as ex:
             duration = int(time.time() - start_time)
             self.__logger.info("Failed stage %s with %s (%d seconds)" % (self.__stage_type, str(ex), duration))
             raise
-        duration = int(time.time() - start_time)
-        self.__logger.info("Executed %s stage (%d seconds)" % (self.__stage_type, duration))
+
         return result
 
     def execute_stage(self, inputs):

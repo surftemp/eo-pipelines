@@ -1,0 +1,87 @@
+import os.path
+
+from eo_pipelines.pipeline_stage import PipelineStage
+from eo_pipelines.pipeline_stage_utils import format_int
+
+
+class LandsatAlign(PipelineStage):
+
+    VERSION = "0.0.1"
+
+    def __init__(self, node_services):
+        super().__init__(node_services.get_node_id(), "landsat_align", node_services.get_property("configuration"),
+                         node_services.get_configuration().get_spec(),
+                         node_services.get_configuration().get_environment())
+        self.node_services = node_services
+
+        self.output_min_path = self.get_configuration().get("output_min_path", "")
+        self.output_folder = self.get_configuration().get("output_folder", "")
+
+        if self.output_min_path:
+            if not os.path.isabs(self.output_min_path):
+                self.output_min_path = os.path.join(self.get_working_directory(),self.output_min_path)
+        if self.output_folder:
+            if not os.path.isabs(self.output_folder):
+                self.output_folder = os.path.join(self.get_working_directory(),self.output_folder)
+
+        self.get_logger().info("eo_pipeline_stages.LandsatAlign %s" % LandsatAlign.VERSION)
+
+    def get_parameters(self):
+        params = {}
+        if self.output_folder:
+            params["OUTPUT_FOLDER"] = "--output-folder "+self.output_folder
+
+        if self.output_min_path:
+            params["OUTPUT_MIN_PATH"] = "--output-min-path "+self.output_min_path
+        return params
+
+    def execute_stage(self, inputs):
+
+        executor = self.create_executor()
+
+        output_scenes = {}
+
+        succeeded = 0
+        failed = 0
+
+        if self.output_min_path:
+            folder = os.path.split(self.output_min_path)[0]
+            os.makedirs(folder,exist_ok=True)
+        if self.output_folder:
+            os.makedirs(self.output_folder,exist_ok=True)
+
+        for input in inputs["input"]:
+
+            for dataset in input:
+
+                custom_env = self.get_parameters()
+                input_path =  input[dataset]
+                custom_env["INPUT_FOLDER"] = input_path
+
+                script = os.path.join(os.path.split(__file__)[0], "landsat_align.sh")
+                task_id = executor.queue_task(self.get_stage_id(),script, custom_env, self.get_working_directory(),
+                                              description=os.path.split(input_path)[-1])
+
+                executor.wait_for_tasks()
+                if executor.get_task_result(task_id):
+                    succeeded += 1
+                    if self.output_folder:
+                        output_scenes[dataset] = self.output_folder
+                else:
+                    failed += 1
+
+        summary = f"Landsat Align: succeeded:{succeeded}, failed:{failed}"
+        if succeeded > 0:
+            if failed > 0:
+                self.get_logger().warn(summary)
+            else:
+                self.get_logger().info(summary)
+        else:
+            if failed > 0:
+                self.get_logger().error(summary)
+            else:
+                self.get_logger().warn(summary)
+
+        return {"output":output_scenes}
+
+

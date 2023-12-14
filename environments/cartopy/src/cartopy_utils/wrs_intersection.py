@@ -42,10 +42,10 @@ if __name__ == '__main__':
     parser.add_argument("--wrs-path", help="Path to geojson file containing WRS definitions",
                         default="wrs2.geojson")
     # defaults: Leavrett
-    parser.add_argument("--min-lat", default=67.01990443)
-    parser.add_argument("--max-lat", default=67.07754789)
-    parser.add_argument("--min-lon", default=-50.16443218)
-    parser.add_argument("--max-lon", default=-49.92716455)
+    parser.add_argument("--min-lat", default=51)
+    parser.add_argument("--max-lat", default=51.1)
+    parser.add_argument("--min-lon", default=-0.1)
+    parser.add_argument("--max-lon", default=0.1)
 
     args = parser.parse_args()
     search = WRSSearch(args.wrs_path)

@@ -17,7 +17,12 @@ class Import(PipelineStage):
                          node_services.get_configuration().get_environment())
         self.node_services = node_services
 
-        self.output_path = self.get_configuration().get("output_path", self.get_working_directory())
+        self.output_path = self.get_configuration().get("output_path", None)
+        if self.output_path is None:
+            self.output_path = self.get_working_directory()
+        else:
+            if not os.path.isabs(self.output_path):
+                self.output_path = os.path.join(self.get_working_directory(), self.output_path)
 
         self.get_logger().info("eo_pipeline_stages.Regrid %s" % Import.VERSION)
 

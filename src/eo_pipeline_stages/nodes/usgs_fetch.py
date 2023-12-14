@@ -68,7 +68,12 @@ class Fetch(PipelineStage):
 
     def __init__(self, node_services):
         super().__init__(node_services.get_node_id(), "fetch", node_services.get_property("configuration"), node_services.get_configuration().get_spec(),  node_services.get_configuration().get_environment())
-        self.output_path = self.get_configuration().get("output_path", self.get_working_directory())
+        self.output_path = self.get_configuration().get("output_path", None)
+        if self.output_path is None:
+            self.output_path = self.get_working_directory()
+        else:
+            if not os.path.isabs(self.output_path):
+                self.output_path = os.path.join(self.get_working_directory(),self.output_path)
         self.get_logger().info("eo_pipeline_stages.Fetch %s" % Fetch.VERSION)
 
 
@@ -133,8 +138,7 @@ class Fetch(PipelineStage):
                     executor.wait_for_tasks()
                     if not executor.get_task_result(fetch_task_id):
                         self.get_logger().error("Failed to fetch of scenes for dataset: %s" % dataset)
-                    else:
-                        output_folders[dataset] = dataset_output_folder
+                    output_folders[dataset] = dataset_output_folder
 
         return {"output":output_folders}
 
