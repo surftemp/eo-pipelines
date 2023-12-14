@@ -11,7 +11,7 @@ class Group(PipelineStage):
     VERSION = "0.1"
 
     def __init__(self, node_services):
-        super().__init__(node_services.get_node_id(), "group", node_services.get_property("configuration"), node_services.get_configuration().get_spec(),  node_services.get_configuration().get_environment())
+        super().__init__(node_services, "group")
         self.output_path = self.get_configuration()\
             .get("output_path", self.get_working_directory())
         self.get_logger().info("eo_pipeline_stages.Group %s" % Group.VERSION)

@@ -5,16 +5,14 @@ from eo_pipelines.executors.executor_factory import ExecutorType
 from eo_pipelines.pipeline_stage_utils import format_int, format_float
 
 
-class Import(PipelineStage):
+class LandsatImport(PipelineStage):
 
     VERSION = "0.0.2"
 
     DEFAULT_RESOLUTION = 50
 
     def __init__(self, node_services):
-        super().__init__(node_services.get_node_id(), "import", node_services.get_property("configuration"),
-                         node_services.get_configuration().get_spec(),
-                         node_services.get_configuration().get_environment())
+        super().__init__(node_services,"landsat_import")
         self.node_services = node_services
 
         self.output_path = self.get_configuration().get("output_path", None)
@@ -24,7 +22,7 @@ class Import(PipelineStage):
             if not os.path.isabs(self.output_path):
                 self.output_path = os.path.join(self.get_working_directory(), self.output_path)
 
-        self.get_logger().info("eo_pipeline_stages.Regrid %s" % Import.VERSION)
+        self.get_logger().info("eo_pipeline_stages.LandsatImport %s" % LandsatImport.VERSION)
 
     def get_parameters(self):
         return {
@@ -64,7 +62,7 @@ class Import(PipelineStage):
                     custom_env["SCENE_PATH"] = metadata_path
                     custom_env["OUTPUT_PATH"] = dataset_output_folder
 
-                    script = os.path.join(os.path.split(__file__)[0], "usgs_import.sh")
+                    script = os.path.join(os.path.split(__file__)[0], "landsat_import.sh")
                     task_id = executor.queue_task(self.get_stage_id(),script, custom_env, self.get_working_directory(),
                                               description=metadata_id)
                     task_ids.append(task_id)
@@ -76,7 +74,8 @@ class Import(PipelineStage):
                         succeeded += 1
                     else:
                         failed += 1
-        summary = f"Regrid scenes: succeeded:{succeeded}, failed:{failed}"
+
+        summary = f"landsat import scenes: succeeded:{succeeded}, failed:{failed}"
         if succeeded > 0:
             if failed > 0:
                 self.get_logger().warn(summary)
@@ -87,6 +86,7 @@ class Import(PipelineStage):
                 self.get_logger().error(summary)
             else:
                 self.get_logger().warn(summary)
+
         return {"output":output_scenes}
 
 

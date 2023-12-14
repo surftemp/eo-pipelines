@@ -9,9 +9,7 @@ class LandsatAlign(PipelineStage):
     VERSION = "0.0.1"
 
     def __init__(self, node_services):
-        super().__init__(node_services.get_node_id(), "landsat_align", node_services.get_property("configuration"),
-                         node_services.get_configuration().get_spec(),
-                         node_services.get_configuration().get_environment())
+        super().__init__(node_services, "landsat_align")
         self.node_services = node_services
 
         self.output_min_path = self.get_configuration().get("output_min_path", "")

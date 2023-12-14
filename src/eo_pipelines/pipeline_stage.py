@@ -30,16 +30,16 @@ from eo_pipelines.executors.executor_factory import ExecutorType, ExecutorFactor
 
 class PipelineStage:
 
-    def __init__(self, stage_id, stage_type, configuration, spec, environment):
-        self.__stage_id = stage_id
+    def __init__(self, node_services, stage_type):
+        self.__stage_id = node_services.get_node_id()
         self.__stage_type = stage_type
-        self.__configuration = configuration or {}
-        self.__spec = spec
-        self.__environment = environment
-        self.__execution_settings = self.__configuration.get("executor_settings",{})
+        self.__configuration = node_services.get_property("configuration",{})
+        self.__spec = node_services.get_configuration().get_spec()
+        self.__environment = node_services.get_configuration().get_environment()
+        self.__executor_settings = node_services.get_property("executor_settings",{})
         self.__executor_factory = None
-        if "executor_type" in self.__execution_settings:
-            executor_type_name = self.__execution_settings["executor_type"]
+        if "executor_type" in self.__executor_settings:
+            executor_type_name = self.__executor_settings["executor_type"]
             self.__default_executor_type = ExecutorType.parse_executor_type_name(executor_type_name)
         else:
             self.__default_executor_type = ExecutorType.Local
@@ -68,7 +68,7 @@ class PipelineStage:
         if executor_type is None:
             executor_type = self.__default_executor_type
         executor_name = ExecutorType.get_executor_type_name(executor_type)
-        executor_settings = self.__execution_settings.get(executor_name,{})
+        executor_settings = self.__executor_settings.get(executor_name,{})
         return self.__executor_factory.create_executor(executor_type, self.get_environment(), executor_settings)
 
     def get_stage_id(self):
@@ -85,10 +85,10 @@ class PipelineStage:
 
     def execute(self,inputs):
         start_time = time.time()
-        skip = self.get_configuration().get("skip", False)
+        can_skip = self.__executor_settings.get("can_skip", False)
         results_path = os.path.join(self.__working_directory,"results.json")
         try:
-            if not skip or not os.path.exists(results_path):
+            if not can_skip or not os.path.exists(results_path):
                 self.__logger.info("Executing stage %s " % self.__stage_type)
                 result = self.execute_stage(inputs)
                 with open(results_path,"w") as of:
@@ -96,7 +96,7 @@ class PipelineStage:
                 duration = int(time.time() - start_time)
                 self.__logger.info("Executed %s stage (%d seconds)" % (self.__stage_type, duration))
             else:
-                self.__logger.info("Skipping stage %s " % self.__stage_type)
+                self.__logger.info("Skipping stage %s execution (reusing previous results)" % self.__stage_type)
                 with open(results_path) as f:
                     result = json.loads(f.read())
         except Exception as ex:

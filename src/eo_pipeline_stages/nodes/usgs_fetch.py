@@ -67,7 +67,7 @@ class Fetch(PipelineStage):
     }
 
     def __init__(self, node_services):
-        super().__init__(node_services.get_node_id(), "fetch", node_services.get_property("configuration"), node_services.get_configuration().get_spec(),  node_services.get_configuration().get_environment())
+        super().__init__(node_services,"fetch")
         self.output_path = self.get_configuration().get("output_path", None)
         if self.output_path is None:
             self.output_path = self.get_working_directory()

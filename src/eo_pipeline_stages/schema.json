@@ -40,7 +40,7 @@
             },
             "classname": "nodes.usgs_fetch.Fetch"
         },
-        "usgs_import": {
+        "landsat_import": {
             "metadata": {
                 "name": "Import",
                 "description": "Import USGS Landsat scenes to netcdf"
@@ -55,7 +55,7 @@
                     "link_type": "eo_pipelines:netcdf_sceneset"
                 }
             },
-            "classname": "nodes.usgs_import.Import"
+            "classname": "nodes.landsat_import.LandsatImport"
         },
         "landsat_align": {
             "metadata": {

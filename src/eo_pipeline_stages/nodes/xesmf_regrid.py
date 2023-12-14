@@ -9,9 +9,7 @@ class XESMFRegrid(PipelineStage):
     VERSION = "0.0.1"
 
     def __init__(self, node_services):
-        super().__init__(node_services.get_node_id(), "xesmf_regrid", node_services.get_property("configuration"),
-                         node_services.get_configuration().get_spec(),
-                         node_services.get_configuration().get_environment())
+        super().__init__(node_services, "xesmf_regrid")
         self.node_services = node_services
 
         self.output_path = self.get_configuration().get("output_path", self.get_working_directory())

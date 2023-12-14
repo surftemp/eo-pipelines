@@ -27,7 +27,7 @@ import argparse
 
 class LandsatAlign:
 
-    def __init__(self, input_folder, output_folder, min_path=None, max_shift=100):
+    def __init__(self, input_folder, output_folder, min_path=None, max_shift=200):
         self.input_folder = input_folder
         self.output_folder = output_folder
         self.min_path = min_path
@@ -47,19 +47,28 @@ class LandsatAlign:
             os.makedirs(self.output_folder,exist_ok=True)
 
         scenes = []
+        datasets = {}
+
         for f in os.listdir(input_folder):
             if f.endswith(".nc"):
-                scenes.append(f)
+                input_path = os.path.join(self.input_folder, f)
+                try:
+                    ds = xr.open_dataset(input_path)
+                    # sanity check for HDF errors
+                    lat0 = ds.lat[0,0]
+                    lon0 = ds.lon[0,0]
+                    scenes.append(f)
+                    datasets[f] = ds
+                except Exception as ex:
+                    self.logger.warning(f"Error {str(ex)} reading input file {input_path}, ignoring")
 
         if len(scenes) == 0:
             raise ValueError(f"No input files found to process in {input_folder}")
 
-        datasets = {}
-
         self.logger.info(f"Found {len(scenes)} input files")
         # find the "most westerly shifted" file
         for f in scenes:
-            ds = xr.open_dataset(os.path.join(self.input_folder,f))
+            ds = datasets[f]
             if first_ds is None:
                 first_ds = ds
             else:
@@ -142,6 +151,8 @@ class LandsatAlign:
                 output_path = os.path.join(self.output_folder, f)
                 self.logger.info(f"Creating output file: {output_path}")
                 self.create_output_dataset(output_path,ds,output_arrays)
+
+            ds.close()
 
         if self.min_path:
             self.logger.info(f"Creating output file: {self.min_path}")
