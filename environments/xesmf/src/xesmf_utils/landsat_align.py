@@ -54,9 +54,6 @@ class LandsatAlign:
                 input_path = os.path.join(self.input_folder, f)
                 try:
                     ds = xr.open_dataset(input_path)
-                    # sanity check for HDF errors
-                    lat0 = ds.lat[0,0]
-                    lon0 = ds.lon[0,0]
                     scenes.append(f)
                     datasets[f] = ds
                 except Exception as ex:
@@ -68,22 +65,24 @@ class LandsatAlign:
         self.logger.info(f"Found {len(scenes)} input files")
         # find the "most westerly shifted" file
         for f in scenes:
-            ds = datasets[f]
-            if first_ds is None:
-                first_ds = ds
-            else:
-                shift = self.find_shift(first_ds, ds)
-                if shift is None:
-                    raise Exception(f"Unable to calculate shift for file {f}")
-                if min_shift == None or shift < min_shift:
-                    min_shift = shift
-                    ref_ds = ds
-                    ref_filename = f
-                if max_shift is None or shift > max_shift:
-                    max_shift = shift
-                    max_shift_filename = f
-
-            datasets[f] = ds
+            try:
+                ds = datasets[f]
+                if first_ds is None:
+                    first_ds = ds
+                else:
+                    shift = self.find_shift(first_ds, ds)
+                    if shift is None:
+                        raise Exception(f"Unable to calculate shift for file {f}")
+                    if min_shift == None or shift < min_shift:
+                        min_shift = shift
+                        ref_ds = ds
+                        ref_filename = f
+                    if max_shift is None or shift > max_shift:
+                        max_shift = shift
+                        max_shift_filename = f
+            except:
+                del datasets[f]
+                self.logger.exception(f"Error processing input file: {f}")
 
         self.logger.info(f"Western most file is {ref_filename}, Eastern most file is {max_shift_filename}, pixel shift is {max_shift-min_shift}")
 
@@ -92,15 +91,20 @@ class LandsatAlign:
         output_width = None
         output_height = None
         for f in scenes:
-            ds = datasets[f]
-            (height,width) = ds.lon.shape
-            shift = self.find_shift(ref_ds,ds) if f != ref_filename else 0
-            shifts[f] = shift
-            assert(shift >= 0) # just checking
-            if output_width is None or shift+width > output_width:
-                output_width = shift+width
-            if output_height is None or height < output_height:
-                output_height = height
+            if f in datasets:
+                try:
+                    ds = datasets[f]
+                    (height,width) = ds.lon.shape
+                    shift = self.find_shift(ref_ds,ds) if f != ref_filename else 0
+                    shifts[f] = shift
+                    assert(shift >= 0) # just checking
+                    if output_width is None or shift+width > output_width:
+                        output_width = shift+width
+                    if output_height is None or height < output_height:
+                        output_height = height
+                except:
+                    del datasets[f]
+                    self.logger.exception(f"Error processing input file: {f}")
 
 
         self.logger.info(f"Output dimensions height: {output_height}, width: {output_width}")
@@ -112,11 +116,16 @@ class LandsatAlign:
         output_lons[:,:] = np.nan
 
         for f in [ref_filename,max_shift_filename]:
-            ds = datasets[f]
-            width = ds.lon.shape[1]
-            shift = shifts[f]
-            output_lons[0:output_height,shift:shift+width] = ds.lon.data[0:output_height,:]
-            output_lats[0:output_height,shift:shift+width] = ds.lat.data[0:output_height,:]
+            if f in datasets:
+                try:
+                    ds = datasets[f]
+                    width = ds.lon.shape[1]
+                    shift = shifts[f]
+                    output_lons[0:output_height,shift:shift+width] = ds.lon.data[0:output_height,:]
+                    output_lats[0:output_height,shift:shift+width] = ds.lat.data[0:output_height,:]
+                except:
+                    del datasets[f]
+                    self.logger.exception(f"Error processing input file: {f}")
 
         # create the output datasets and aggregate
         if self.min_path:
@@ -125,38 +134,42 @@ class LandsatAlign:
             min_arrays = None
 
         for f in scenes:
-            self.logger.info(f"Processing input file: {f}")
-            ds = datasets[f]
-            (height,width) = ds.lon.shape
-            shift = shifts[f]
-            min_height = min(height,output_height)
+            if f in datasets:
+                try:
+                    self.logger.info(f"Processing input file: {f}")
+                    ds = datasets[f]
+                    (height,width) = ds.lon.shape
+                    shift = shifts[f]
+                    min_height = min(height,output_height)
 
-            output_arrays = { "lat": output_lats, "lon": output_lons}
+                    output_arrays = { "lat": output_lats, "lon": output_lons}
 
-            for v in ds.variables:
-                if v != "time" and v != "lat" and v != "lon":
+                    for v in ds.variables:
+                        if v != "time" and v != "lat" and v != "lon":
 
-                    arr = np.zeros(shape=(1,output_height,output_width),dtype=ds[v].dtype)
-                    arr[0,:,:] = np.nan
-                    arr[0,0:min_height,shift:shift+width] = ds[v].data[0,0:min_height,:]
-                    output_arrays[v] = arr
+                            arr = np.zeros(shape=(1,output_height,output_width),dtype=ds[v].dtype)
+                            arr[0,:,:] = np.nan
+                            arr[0,0:min_height,shift:shift+width] = ds[v].data[0,0:min_height,:]
+                            output_arrays[v] = arr
 
-                    if min_arrays is not None:
-                        if v not in min_arrays:
-                            min_arrays[v] = arr
-                        else:
-                            min_arrays[v] = np.nanmin(np.stack([arr,min_arrays[v]]),axis=0)
+                            if min_arrays is not None:
+                                if v not in min_arrays:
+                                    min_arrays[v] = arr
+                                else:
+                                    min_arrays[v] = np.nanmin(np.stack([arr,min_arrays[v]]),axis=0)
 
-            if self.output_folder:
-                output_path = os.path.join(self.output_folder, f)
-                self.logger.info(f"Creating output file: {output_path}")
-                self.create_output_dataset(output_path,ds,output_arrays)
+                    if self.output_folder:
+                        output_path = os.path.join(self.output_folder, f)
+                        self.logger.info(f"Creating output file: {output_path}")
+                        self.create_output_dataset(output_path,ds,output_arrays)
 
-            ds.close()
+                except:
+                    del datasets[f]
+                    self.logger.exception(f"Error processing input file: {f}")
 
         if self.min_path:
             self.logger.info(f"Creating output file: {self.min_path}")
-            self.create_output_dataset(self.min_path, ds, min_arrays)
+            self.create_output_dataset(self.min_path, ref_ds, min_arrays)
 
     def create_output_dataset(self,to_path,from_ds,variable_arrays):
         encodings = {}

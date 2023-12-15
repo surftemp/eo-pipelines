@@ -85,8 +85,6 @@ class Fetch(PipelineStage):
         if not usgs_password or not usgs_username:
             raise Exception("Please set environment variables USGS_USERNAME and USGS_PASSWORD")
 
-        base_output_folder = self.get_configuration().get("output_path",self.get_working_directory())
-
         output_folders = {}
 
         executor = self.create_executor(ExecutorType.Local)
@@ -121,7 +119,7 @@ class Fetch(PipelineStage):
                         if len(required_bands)==0 or band_name in required_bands:
                             suffixes.append(suffix_mapping[band_name])
 
-                    dataset_output_folder = os.path.join(base_output_folder,dataset)
+                    dataset_output_folder = os.path.join(self.output_path,dataset)
                     os.makedirs(dataset_output_folder, exist_ok=True)
 
                     custom_env = {

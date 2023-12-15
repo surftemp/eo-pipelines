@@ -57,7 +57,7 @@ class USGS_Search(PipelineStage):
             path_filter = "--path "+str(path_filter)
         month_filter = self.get_configuration().get("months", [])
         if len(month_filter) > 0:
-            month_filter = "--months " + " ".join(month_filter)
+            month_filter = "--months " + " ".join(map(lambda m:str(m),month_filter))
         else:
             month_filter = ""
 
