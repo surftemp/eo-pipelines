@@ -55,6 +55,11 @@ class USGS_Search(PipelineStage):
         path_filter = self.get_configuration().get("path","")
         if path_filter:
             path_filter = "--path "+str(path_filter)
+        month_filter = self.get_configuration().get("months", [])
+        if len(month_filter) > 0:
+            month_filter = "--months " + " ".join(month_filter)
+        else:
+            month_filter = ""
 
         return {
             "LAT_MIN": format_float(self.get_spec().get_lat_min()),
@@ -65,6 +70,7 @@ class USGS_Search(PipelineStage):
             "END_DATE": format_date(self.get_spec().get_end_date()),
             "MAX_CLOUD_COVER_PCT": format_int(int(self.get_spec().get_max_cloud_cover_fraction() * 100)),
             "OUTPUT_PATH": self.output_path,
+            "MONTH_FILTER": month_filter,
             "ROW_FILTER": row_filter,
             "PATH_FILTER": path_filter
         }
