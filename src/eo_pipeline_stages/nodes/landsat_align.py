@@ -56,6 +56,15 @@ class LandsatAlign(PipelineStage):
                 input_path =  input[dataset]
                 custom_env["INPUT_FOLDER"] = input_path
 
+                count = 0
+                for fname in os.listdir(input_path):
+                    if fname.endswith(".nc"):
+                        count += 1
+
+                if count < 2:
+                    self.get_logger().warning(f"not enough input files for {dataset}")
+                    continue
+
                 script = os.path.join(os.path.split(__file__)[0], "landsat_align.sh")
                 task_id = executor.queue_task(self.get_stage_id(),script, custom_env, self.get_working_directory(),
                                               description=os.path.split(input_path)[-1])

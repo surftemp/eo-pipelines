@@ -139,12 +139,16 @@ class USGS_Search(PipelineStage):
             try:
                 scenes = []
                 scenes_csv_path = os.path.join(self.get_working_directory(), "%s_scenes.csv" % (dataset))
+                found = 0
                 with open(scenes_csv_path) as scenes_f:
                     rdr = csv.reader(scenes_f)
                     for line in rdr:
                         scenes.append(line[2])
+                        found += 1
+                self.get_logger().info(f"Found {found} scenes for dataset: {dataset}")
                 scene_list[dataset] = scenes
-            except:
+            except Exception as ex:
+                self.get_logger().exception(f"Error fetching scenes for {dataset}")
                 errors += 1
 
         if errors == 0:

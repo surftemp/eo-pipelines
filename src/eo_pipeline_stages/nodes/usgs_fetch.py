@@ -82,6 +82,8 @@ class Fetch(PipelineStage):
         usgs_username = os.getenv("USGS_USERNAME")
         usgs_password = os.getenv("USGS_PASSWORD")
 
+        limit = self.get_configuration().get("limit",None)
+
         if not usgs_password or not usgs_username:
             raise Exception("Please set environment variables USGS_USERNAME and USGS_PASSWORD")
 
@@ -103,6 +105,7 @@ class Fetch(PipelineStage):
                 os.unlink(parameters_path)
 
             for input in inputs["input"]:
+                fetched = 0
                 for dataset in input:
                     entity_ids = input[dataset]
                     scenes_csv_path = os.path.join(self.get_working_directory(), "%s_scenes.csv" % (dataset))
@@ -136,7 +139,11 @@ class Fetch(PipelineStage):
                     executor.wait_for_tasks()
                     if not executor.get_task_result(fetch_task_id):
                         self.get_logger().error("Failed to fetch of scenes for dataset: %s" % dataset)
+                    else:
+                        fetched += 1
                     output_folders[dataset] = dataset_output_folder
+                    if limit is not None and fetched >= limit:
+                        break
 
         return {"output":output_folders}
 
