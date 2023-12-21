@@ -28,22 +28,19 @@ import argparse
 
 class LandsatAlign:
 
-    def __init__(self, input_folder, output_folder, min_path=None, max_shift=200):
+    def __init__(self, input_folder, output_folder, min_path=None):
         self.input_folder = input_folder
         self.output_folder = output_folder
         self.min_path = min_path
-        self.max_shift = max_shift
         self.logger = logging.getLogger("LandsatAlign")
 
     def run(self, slice_size=None, check_alignment=False):
 
-        min_eshift = None
         max_eshift = None
         max_eshift_filename = None
-        first_ds = None
+
         ref_ds = None
         ref_filename = None
-        ref_sshift = None
 
         if self.output_folder is not None:
             os.makedirs(self.output_folder,exist_ok=True)
@@ -68,32 +65,21 @@ class LandsatAlign:
 
         self.logger.info(f"Found {len(scenes)} input files")
         # find the "most westerly shifted" file
+        min_lon = None
         for f in scenes:
             try:
                 ds = datasets[f]
-                if first_ds is None:
-                    first_ds = ds
-                else:
-                    (nshift,wshift) = self.find_shift(first_ds, ds)
-
-                    if wshift is None:
-                        raise Exception(f"Unable to calculate shift for file {f}")
-                    eshift = -wshift
-                    sshift = -nshift
-
-                    if min_eshift == None or eshift < min_eshift:
-                        min_eshift = eshift
-                        ref_ds = ds
-                        ref_filename = f
-                        ref_sshift = sshift
-                    if max_eshift is None or eshift > max_eshift:
-                        max_eshift = eshift
-                        max_eshift_filename = f
+                ml = float(ds.lon.min())
+                if min_lon is None or  ml < min_lon:
+                    ref_ds = ds
+                    min_lon = ml
+                    ref_filename = f
             except:
                 del datasets[f]
                 self.logger.exception(f"Error processing input file: {f}")
 
-        self.logger.info(f"Western most file is {ref_filename}, Eastern most file is {max_eshift_filename}, pixel shift is {max_eshift-min_eshift}")
+        self.logger.info(f"Selecting {ref_filename} as the most westerly reference scene")
+        self.logger.info(f"Aligning scenes...")
 
         # now work out the output width and final shifts
         eshifts = {}
@@ -107,18 +93,27 @@ class LandsatAlign:
                     (height,width) = ds.lon.shape
                     # work out how many pixels to shift this dataset to the "east"
                     (nshift,wshift) = self.find_shift(ref_ds,ds) if f != ref_filename else (0,0)
+
+                    if wshift is None:
+                        self.logger.warning(f"Unable to align {f}, skipping")
+
                     eshift = -wshift
                     sshift = -nshift
                     eshifts[f] = eshift
                     sshifts[f] = sshift
-                    assert(eshift >= 0) # just checking
-                    # shift south wrt reference
-                    rel_sshift = sshift - ref_sshift
-                    # if shifted further north wrt ref, reduce usable height
-                    if rel_sshift < 0:
-                        height -= -rel_sshift
+                    assert(eshift >= 0) # sanity checking
 
-                    if output_width is None or -wshift+width > output_width:
+                    if max_eshift is None or eshift > max_eshift:
+                        max_eshift = eshift
+                        max_eshift_filename = f
+
+                    self.logger.info(f"Aligned {f} with east-shift={eshift}, south-shift={sshift}")
+
+                    # if shifted further north wrt ref, reduce usable height
+                    if sshift < 0:
+                        height -= -sshift
+
+                    if output_width is None or eshift+width > output_width:
                         output_width = eshift+width
                     if output_height is None or height < output_height:
                         output_height = height
@@ -143,9 +138,8 @@ class LandsatAlign:
                     width = ds.lon.shape[1]
                     eshift = eshifts[f]
                     sshift = sshifts[f]
-                    rel_sshift = sshift - ref_sshift
-                    dst_start_y = rel_sshift if rel_sshift > 0 else 0
-                    src_start_y = -rel_sshift if rel_sshift < 0 else 0
+                    dst_start_y = sshift if sshift > 0 else 0
+                    src_start_y = -sshift if sshift < 0 else 0
                     copy_height = min(output_height-dst_start_y,height-src_start_y)
 
                     output_lons[dst_start_y:dst_start_y+copy_height,eshift:eshift+width] = ds.lon.data[src_start_y:src_start_y+copy_height,:]
@@ -169,9 +163,9 @@ class LandsatAlign:
                     (height,width) = ds.lon.shape
                     eshift = eshifts[f]
                     sshift = sshifts[f]
-                    rel_sshift = sshift - ref_sshift
-                    dst_start_y = rel_sshift if rel_sshift > 0 else 0
-                    src_start_y = -rel_sshift if rel_sshift < 0 else 0
+
+                    dst_start_y = sshift if sshift > 0 else 0
+                    src_start_y = -sshift if sshift < 0 else 0
                     copy_height = min(output_height - dst_start_y, height - src_start_y)
 
                     # sanity check lat/lon alignment
@@ -236,28 +230,29 @@ class LandsatAlign:
         # return how many pixels other_ds should be shifted "to the west" and "to the north" to align with ref_ds
         # returning (north_shift,west_shift)
         # or None if no shift was found within the max_shift
-        for xshift in range(-self.max_shift,self.max_shift+1,10):
-            # x-axis runs approx from west to east
-            ref_idx_x = 0
-            other_idx_x = 0
-            if xshift < 0:
-                other_idx_x = -xshift # shift other "west"
-            else:
-                ref_idx_x = xshift # shift other "east"
-            for yshift in range(-self.max_shift, self.max_shift + 1, 10):
-                # y-axis runs approx from north to south
-                ref_idx_y = 0
-                other_idx_y = 0
-                if yshift < 0:
-                    other_idx_y = -yshift  # shift other "north"
+        for (max_shift,shift_step) in [(300,10),(100,1)]:
+            for xshift in range(0,max_shift+1,shift_step):
+                # x-axis runs approx from west to east
+                ref_idx_x = 0
+                other_idx_x = 0
+                if xshift < 0:
+                    other_idx_x = -xshift # shift other "west"
                 else:
-                    ref_idx_y = yshift  # shift other "south"
-                if float(ref_ds.lat[ref_idx_y,ref_idx_x]) == float(other_ds.lat[other_idx_y,other_idx_x]) \
-                   and float(ref_ds.lon[ref_idx_y,ref_idx_x]) == float(other_ds.lon[other_idx_y,other_idx_x]):
-                   return (-yshift,-xshift)
+                    ref_idx_x = xshift # shift other "east"
+                for yshift in range(-max_shift, max_shift + 1, shift_step):
+                    # y-axis runs approx from north to south
+                    ref_idx_y = 0
+                    other_idx_y = 0
+                    if yshift < 0:
+                        other_idx_y = -yshift  # shift other "north"
+                    else:
+                        ref_idx_y = yshift  # shift other "south"
+                    if float(ref_ds.lat[ref_idx_y,ref_idx_x]) == float(other_ds.lat[other_idx_y,other_idx_x]) \
+                       and float(ref_ds.lon[ref_idx_y,ref_idx_x]) == float(other_ds.lon[other_idx_y,other_idx_x]):
+                       return (-yshift,-xshift)
 
         # no shift found...
-        return None
+        return (None,None)
 
 
 if __name__ == '__main__':
@@ -267,7 +262,7 @@ if __name__ == '__main__':
     parser.add_argument("--output-folder",help="Output aligned versions of input files to this folder", default=None)
     parser.add_argument("--output-min-path",help="Aggregate minimum values and output to this path",default=None)
     parser.add_argument("--slice", type=int, help="Work with a NE corner slice of the data of this size, useful for testing", default=None)
-    parser.add_argument("--check-alignment", action="store_true", help="Double check alignment")
+    parser.add_argument("--check", action="store_true", help="Double check alignment")
 
     logging.basicConfig(level=logging.INFO)
 
@@ -277,5 +272,5 @@ if __name__ == '__main__':
     output_folder = args.output_folder
 
     aligner = LandsatAlign(input_folder,output_folder,min_path=args.output_min_path)
-    aligner.run(slice_size=args.slice,check_alignment=args.check_alignment)
+    aligner.run(slice_size=args.slice,check_alignment=args.check)
 
