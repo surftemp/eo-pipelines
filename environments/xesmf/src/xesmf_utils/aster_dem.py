@@ -126,6 +126,7 @@ bash_code2 = """EDSCEOF"""
 
 crs = None
 
+
 def fetch_dem(min_lat, max_lat, min_lon, max_lon, folder, username, password):
 
     def get_tile_template(lat, lon):
@@ -173,6 +174,9 @@ def fetch_dem(min_lat, max_lat, min_lon, max_lon, folder, username, password):
 
 def glue_dem(min_lat, max_lat, min_lon, max_lon, input_folder, output_path):
 
+    lat_cache = {}
+    lon_cache = {}
+
     def preprocessor(ds):
         # ASTER DEM tiles seem to overlap by 1 pixel in both dimensions
         # remove last latidude and longitude pixels from each tile to ensure they don't overlap
@@ -181,8 +185,23 @@ def glue_dem(min_lat, max_lat, min_lon, max_lon, input_folder, output_path):
         nlon = len(ds.lon)
         ds2 = ds.isel(lat=range(0, nlat - 1), lon=range(0, nlon - 1))
 
-        ds2["lat"] = ds2.lat.astype(np.float32)
-        ds2["lon"] = ds2.lon.astype(np.float32)
+        # get the min lat/lon of the tile
+        lat_min = int(ds2.lat.min())
+        lon_min = int(ds2.lon.min())
+
+        # standardise lats/lons as there are occasionally small differences at about e-14
+        # that will cause problems with dask
+
+        if lat_min in lat_cache:
+            ds2["lat"] = lat_cache[lat_min]
+        else:
+            lat_cache[lat_min] = ds2["lat"]
+
+        if lon_min in lon_cache:
+            ds2["lon"] = lon_cache[lon_min]
+        else:
+            lon_cache[lon_min] = ds2["lon"]
+
         global crs
         if crs is None:
             crs = ds2["crs"]
@@ -200,7 +219,7 @@ def glue_dem(min_lat, max_lat, min_lon, max_lon, input_folder, output_path):
         ds["crs"] = crs
     ds.to_netcdf(output_path, encoding={
         "ASTER_GDEM_DEM": {
-            "zlib": True, "complevel": 5, "chunksizes": [500, 500], "dtype": "int16"
+            "zlib": True, "complevel": 5, "chunksizes": [1800, 1800], "dtype": "int16"
         }
     })
 

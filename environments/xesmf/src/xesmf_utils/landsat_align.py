@@ -96,6 +96,7 @@ class LandsatAlign:
 
                     if wshift is None:
                         self.logger.warning(f"Unable to align {f}, skipping")
+                        continue
 
                     eshift = -wshift
                     sshift = -nshift
@@ -230,7 +231,7 @@ class LandsatAlign:
         # return how many pixels other_ds should be shifted "to the west" and "to the north" to align with ref_ds
         # returning (north_shift,west_shift)
         # or None if no shift was found within the max_shift
-        for (max_shift,shift_step) in [(300,10),(100,1)]:
+        for (max_shift,shift_step) in [(400,10),(150,1)]:
             for xshift in range(0,max_shift+1,shift_step):
                 # x-axis runs approx from west to east
                 ref_idx_x = 0
