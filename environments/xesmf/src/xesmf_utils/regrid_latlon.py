@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-import logging
 
 #     EOCIS high resolution data processing for the British Isles
 #
@@ -26,15 +25,21 @@ import logging
 
 class RegridLatLon:
 
-    def __init__(self, input_path, grid_path, output_path):
+    def __init__(self, input_path, grid_path, output_folder=None, output_min_path=None,
+                 output_min_chunksize=1800, coarsen=None):
         self.input_path = input_path
         self.grid_path = grid_path
-        self.output_path = output_path
+        self.output_folder = output_folder
+        self.output_min_path = output_min_path
+        self.output_min_chunksize = output_min_chunksize
+        self.coarsen = coarsen
         self.logger = logging.getLogger("RegridLatLon")
 
     def run(self, limit=None):
 
-        os.makedirs(self.output_path,exist_ok=True)
+        if self.output_folder:
+            os.makedirs(self.output_folder, exist_ok=True)
+
         if os.path.isdir(self.input_path):
             input_file_paths = list(map(lambda f: os.path.join(self.input_path,f),os.listdir(self.input_path)))
         else:
@@ -45,6 +50,9 @@ class RegridLatLon:
         total = len(input_file_paths)
 
         grid = xr.open_dataset(self.grid_path)
+        if self.coarsen:
+            grid = grid[{'lat': slice(None, None, self.coarsen), 'lon': slice(None, None, self.coarsen)}]
+        self.logger.info(grid)
 
         # work out the indices on the target grid
         lat0 = float(grid.lat[0])
@@ -54,16 +62,21 @@ class RegridLatLon:
         target_height = grid.lat.shape[0]
         target_width = grid.lon.shape[0]
 
+        accumulated_mins = {}
+
         for input_file_path in input_file_paths:
 
             input_file_name = os.path.split(input_file_path)[1]
-            output_file_path = os.path.join(self.output_path, input_file_name)
-            if os.path.exists(output_file_path):
-                self.logger.warning(f"skipping: {input_file_name} {idx}/{total} output already exists?")
-                idx += 1
-                continue
-            else:
-                self.logger.info(f"processing: {input_file_name} {idx}/{total}")
+
+            output_file_path = None
+            if self.output_folder:
+                output_file_path = os.path.join(self.output_folder, input_file_name)
+                if os.path.exists(output_file_path):
+                    self.logger.warning(f"skipping: {input_file_name} {idx}/{total} output already exists?")
+                    idx += 1
+                    continue
+
+            self.logger.info(f"processing: {input_file_name} {idx}/{total}")
 
             ds = xr.open_dataset(input_file_path)
 
@@ -76,29 +89,56 @@ class RegridLatLon:
             indices_ni = np.where(indices_ni < 0, target_width, indices_ni)
             indices_ni = np.where(indices_ni >= target_width, target_width, indices_ni)
 
-            output_ds = xr.Dataset()
-            output_ds["time"] = ds["time"]
-            output_ds["lat"] = grid["lat"]
-            output_ds["lon"] = grid["lon"]
+            output_ds = None
+            if output_file_path:
+                output_ds = xr.Dataset()
+                output_ds["time"] = ds["time"]
+                output_ds["lat"] = grid["lat"]
+                output_ds["lon"] = grid["lon"]
 
-            encodings = {}
-            encodings["lat"] = {"zlib": True, "complevel": 5}
-            encodings["lat"] = {"zlib": True, "complevel": 5}
+                encodings = {}
+                encodings["lat"] = {"zlib": True, "complevel": 5}
+                encodings["lon"] = {"zlib": True, "complevel": 5}
+
             for v in ds.variables:
                 if v != "lat" and v != "lon" and v != "time":
                     if len(ds[v].shape) == 3:
                         target_data = np.zeros((1,target_height + 1, target_width + 1))
                         target_data[:, :] = np.nan
                         target_data[0,indices_nj,indices_ni] = ds[v].data
-                        output_ds[v] = xr.DataArray(target_data[:,:-1,:-1], dims=("time","lat","lon"))
+                        if output_ds is not None:
+                            output_ds[v] = xr.DataArray(target_data[:,:-1,:-1], dims=("time","lat","lon"))
+                            encodings[v] = {"zlib": True, "complevel": 5}
+                        if self.output_min_path:
+                            if v not in accumulated_mins:
+                                a = np.zeros((target_height,target_width))
+                                a[:,:] = np.nan
+                                accumulated_mins[v] = a
+                            accumulated_mins[v] = np.fmin(target_data[0,:-1,:-1],accumulated_mins[v])
 
-            output_ds.to_netcdf(output_file_path)
+            if output_file_path:
+                self.logger.info(f"writing: {output_file_path}")
+                output_ds.to_netcdf(output_file_path,encoding=encodings)
 
             processed += 1
             if limit is not None and processed >= limit:
                 print(f"stopping after processing {processed} scenes")
                 break
             idx += 1
+
+        if self.output_min_path:
+            self.logger.info(f"writing: {self.output_min_path}")
+            encodings = {}
+            for v in accumulated_mins:
+                da = xr.DataArray(data=accumulated_mins[v],dims=("lat","lon"))
+                # interpolate using rolling mean
+                # means = da.rolling(lat=3, lon=3, center=True, min_periods=1).mean()
+                # da = da.where(~np.isnan(da), means)
+                grid[v] = da
+                encodings[v] = {"zlib": True, "complevel": 5, "dtype": "float32",
+                                "chunksizes": [self.output_min_chunksize, self.output_min_chunksize]}
+            grid.to_netcdf(self.output_min_path, encoding=encodings)
+
 
 def main():
     import argparse
@@ -107,13 +147,19 @@ def main():
                         help="input data file to be regridded or folder containing files to be regridded")
     parser.add_argument("target_grid_path",
                         help="path to file defining grid with 1D lat/lon onto which data is to be regridded")
-    parser.add_argument("output_folder", help="path to the output folder into which regridded files are be written")
+    parser.add_argument("--output-folder", help="path to the output folder into which regridded files are be written",
+                        default=None)
+    parser.add_argument("--output-min-path", help="Aggregate minimum values and output to this path", default=None)
+    parser.add_argument("--output-min-chunksize", type=int, help="Chunksize for aggregate min output", default=1800)
     parser.add_argument("--limit", type=int, help="process only this many scenes (for testing)", default=None)
+    parser.add_argument("--coarsen", type=int, help="coarsen the target grid (for testing)", default=None)
 
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO)
-    regridder = RegridLatLon(input_path=args.input_data_path, grid_path=args.target_grid_path, output_path=args.output_folder)
+    regridder = RegridLatLon(input_path=args.input_data_path, grid_path=args.target_grid_path,
+                             output_folder=args.output_folder, output_min_path=args.output_min_path,
+                             output_min_chunksize=args.output_min_chunksize, coarsen=args.coarsen)
     regridder.run(limit=args.limit)
 
 
