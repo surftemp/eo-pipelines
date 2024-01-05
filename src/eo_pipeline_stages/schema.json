@@ -90,6 +90,23 @@
                 }
             },
             "classname": "nodes.usgs_group.Group"
+        },
+        "xesmf_regrid": {
+            "metadata": {
+                "name": "Regrid",
+                "description": "Regrid scenes to a target grid"
+            },
+            "input_ports": {
+                "input": {
+                    "link_type": "eo_pipelines:netcdf_sceneset"
+                }
+            },
+            "output_ports": {
+                "output": {
+                    "link_type": "eo_pipelines:netcdf_sceneset"
+                }
+            },
+            "classname": "nodes.xesmf_regrid.XESMFRegrid"
         }
     },
     "link_types": {

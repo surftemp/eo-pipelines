@@ -34,11 +34,11 @@ nodes:
   n2:
     type: eo_pipelines:usgs_import
     properties:
+      executor_settings:
+        executor: local
+        local:
+          nr_threads: 4
       configuration:
-        executor_settings:
-          executor: local
-          local:
-            nr_threads: 4
         output_path: /gws/nopw/j04/lake_icesheet/leverett/imported
   n3:
     type: eo_pipelines:usgs_group

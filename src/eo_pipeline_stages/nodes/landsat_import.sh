@@ -12,5 +12,5 @@ echo run_landsat_importer $SCENE_PATH $OUTPUT_PATH \
 run_landsat_importer $SCENE_PATH $OUTPUT_PATH \
       --min-lat $LAT_MIN --max-lat $LAT_MAX \
       --min-lon $LON_MIN --max-lon $LON_MAX \
-      --bands $BANDS
+      --bands $BANDS $INJECT_METADATA
 

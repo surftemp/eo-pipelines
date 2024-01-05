@@ -1,4 +1,5 @@
 import os.path
+import json
 
 from eo_pipelines.pipeline_stage import PipelineStage
 from eo_pipelines.executors.executor_factory import ExecutorType
@@ -41,6 +42,14 @@ class LandsatImport(PipelineStage):
         succeeded = 0
         failed = 0
 
+        inject_metadata = self.get_configuration().get("inject_metadata", None)
+        inject_metadata_cmd = ""
+        if inject_metadata is not None:
+            inject_metadata_path = os.path.join(self.get_working_directory(),"inject_metadata.json")
+            with open(inject_metadata_path,"w") as f:
+                f.write(json.dumps(inject_metadata))
+            inject_metadata_cmd = "--inject-metadata-path "+inject_metadata_path
+
         for input in inputs["input"]:
 
             for dataset in input:
@@ -61,6 +70,7 @@ class LandsatImport(PipelineStage):
                     custom_env["BANDS"] = ",".join(self.get_spec().get_bands_for_dataset(dataset))
                     custom_env["SCENE_PATH"] = metadata_path
                     custom_env["OUTPUT_PATH"] = dataset_output_folder
+                    custom_env["INJECT_METADATA"] = inject_metadata_cmd
 
                     script = os.path.join(os.path.split(__file__)[0], "landsat_import.sh")
                     task_id = executor.queue_task(self.get_stage_id(),script, custom_env, self.get_working_directory(),

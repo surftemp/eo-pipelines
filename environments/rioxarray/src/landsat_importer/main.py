@@ -18,6 +18,7 @@
 
 import logging
 import random
+import json
 
 available = False
 try:
@@ -51,6 +52,8 @@ def main():
     parser.add_argument("output_path", help="Specify the output folder or filename")
 
     parser.add_argument("--bands", help="Provide a comma separated list of the bands to export", default="")
+
+    parser.add_argument("--inject-metadata-path", help="Inject global metadata from a dictionary suppluied in a JSON-encoded file", default=None)
 
     parser.add_argument(
         "--export_oli_as",
@@ -143,6 +146,8 @@ def main():
                 script_contents += f" --max-lon {args.max_lon}"
             if args.include_angles:
                 script_contents += " --include-angles"
+            if args.inject_metadata_path:
+                script_contents += f" --inject-metadata-path {args.inject_metadata_path}"
             script_contents += f" --export_oli_as {args.export_oli_as}"
             script_contents += f" --output-file-pattern \"{args.output_file_pattern}\"\n"
             job = pyjob.Job('hostname', script=script_contents, options=slurm_options, env="/bin/bash")
@@ -165,9 +170,13 @@ def main():
                 if os.path.exists(output_file_path):
                     logger.info(f"Output path {output_file_path} already exists, skipping")
                     continue
+                inject_metadata = {}
+                if args.inject_metadata_path:
+                    with open(args.inject_metadata_path) as f:
+                        inject_metadata = json.loads(f.read())
                 p.process(target_bands)
                 p.export(output_file_path, include_angles=args.include_angles, min_lat=args.min_lat, min_lon=args.min_lon,
-                         max_lat=args.max_lat, max_lon=args.max_lon)
+                         max_lat=args.max_lat, max_lon=args.max_lon, inject_metadata=inject_metadata)
             except Exception as ex:
                 logger.exception(f"Processing failed for {input_path}: "+str(ex))
 
