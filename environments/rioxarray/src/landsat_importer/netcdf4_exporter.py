@@ -119,7 +119,7 @@ class Netcdf4Exporter:
         dataset.attrs["creator_name"] = username
         dataset.attrs["date_created"] = date_format(datetime.datetime.now().astimezone())
 
-        for (key,value) in self.inject_metadata:
+        for (key,value) in self.inject_metadata.items():
             dataset.attrs[key] = value
 
         ecomp = {'zlib': True, 'complevel': 5}
