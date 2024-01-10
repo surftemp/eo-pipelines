@@ -45,10 +45,9 @@ class LandsatImport(PipelineStage):
         inject_metadata = self.get_configuration().get("inject_metadata", None)
         inject_metadata_cmd = ""
         if inject_metadata is not None:
-            inject_metadata_path = os.path.join(self.get_working_directory(),"inject_metadata.json")
-            with open(inject_metadata_path,"w") as f:
-                f.write(json.dumps(inject_metadata))
-            inject_metadata_cmd = "--inject-metadata-path "+inject_metadata_path
+            inject_metadata_cmd = "--inject-metadata"
+            for (key,value) in inject_metadata:
+                inject_metadata_cmd += " {key}=\"{value}\""
 
         for input in inputs["input"]:
 

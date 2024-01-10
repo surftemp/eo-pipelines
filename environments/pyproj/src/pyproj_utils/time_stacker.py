@@ -113,7 +113,7 @@ class TimeStacker:
                 print(f"appended {append_count} files in {duration} seconds")
 
 
-if __name__ == '__main__':
+def main():
     logging.basicConfig(level=logging.INFO)
     import argparse
 
@@ -146,3 +146,6 @@ if __name__ == '__main__':
     processor = TimeStacker(args.input_folders, args.output_path, args.limit, args.sample, args.batch_size,
                             args.remove_attributes)
     processor.run()
+
+if __name__ == '__main__':
+    main()

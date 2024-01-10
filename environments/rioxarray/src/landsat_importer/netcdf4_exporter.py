@@ -52,7 +52,7 @@ class Netcdf4Exporter:
 
         Args:
             landsat_metadata: a LandsatMetadata object
-            inject_metadata: dictionary to supply global metadata to add to exported file
+            inject_metadata: dictionary to supply additional global metadata to add to exported file
         """
         self.landsat_metadata = landsat_metadata
         self.inject_metadata = inject_metadata
