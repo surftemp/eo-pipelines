@@ -100,11 +100,12 @@ class BoxMerger:
 def export_to_csv(export_list, path, for_sector):
     with open(path,"w") as f:
         out = csv.writer(f)
-        out.writerow(["target_grid_path","sector","min_lat","min_lon","max_lat","max_lon","lat_resolution","lon_resolution","height","width","lake_ids"])
+        out.writerow(["id,target_grid_path","sector","min_lat","min_lon","max_lat","max_lon","lat_resolution","lon_resolution","height","width","lake_ids"])
         for (filename,box) in export_list:
             (lat_resolution,lon_resolution) = box.get_resolution()
             (height,width) = box.get_size_pixels()
-            out.writerow([filename,for_sector,box.min_lat,box.min_lon,box.max_lat,box.max_lon,lat_resolution,lon_resolution,height,width,";".join(box.lake_ids)])
+            id = "_".join(box.lake_ids)
+            out.writerow([id,filename,for_sector,box.min_lat,box.min_lon,box.max_lat,box.max_lon,lat_resolution,lon_resolution,height,width,";".join(box.lake_ids)])
 
 
 def extract_boxes(df, output_folder, sector):
@@ -184,6 +185,7 @@ if __name__ == '__main__':
     parser.add_argument("--inventory-path",help="path to geojson file containing inventory",default="/home/dev/Projects/greenland_lakes/lakes.geojson")
     parser.add_argument("--output-folder",help="path to output folder to export details of target grids",default="extract")
     parser.add_argument("--sector",help="name of sector to process",default="SW")
+    parser.add_argument("--export-kml", help="export shapes to a KML file")
     args = parser.parse_args()
 
     # Leverett lake ids are 765 766 1019 1020
@@ -197,6 +199,7 @@ if __name__ == '__main__':
     # extract individual lake geojsons
     extract_shapes(df,os.path.join(args.output_folder,"lakes"))
 
-    extract_kml(df,"test.kml")
+    if args.export_kml:
+        extract_kml(df,args.export_kml)
 
 

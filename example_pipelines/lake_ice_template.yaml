@@ -1,0 +1,87 @@
+configuration:
+  eo_pipelines:
+    spec:
+      lat_min: {min_lat}
+      lat_max: {max_lat}
+      lon_min: {min_lon}
+      lon_max: {max_lon}
+      start_date: 2013-01-01
+      end_date: 2023-12-31
+      max_cloud_cover_fraction: 0.05
+      datasets:
+        LANDSAT_OT_C2_L1:
+          bands: [2,3,4,5,6,7,10,11,QA_PIXEL]
+        LANDSAT_OT_C2_L2:
+          bands: [ST]
+    environment:
+      working_directory: {working_directory}
+      conda_path: /home/users/niallmcc/miniconda3/bin/conda
+      shell: "/bin/bash"
+      echo_stdout: True
+
+nodes:
+  n0:
+    type: eo_pipelines:usgs_search
+    properties:
+      executor_settings:
+        can_skip: true
+  n1:
+    type: eo_pipelines:usgs_fetch
+    properties:
+      configuration:
+        output_path: /gws/nopw/j04/lake_icesheet/sector_cache/{sector}
+      executor_settings:
+        can_skip: true
+  n2:
+    type: eo_pipelines:landsat_import
+    properties:
+      configuration:
+        output_path: imported
+        inject_metadata:
+          lake_ids: {lake_ids}
+      executor_settings:
+        can_skip: true
+        executor: local
+        local:
+          nr_threads: 4
+  n3:
+    type: eo_pipelines:usgs_group
+    properties:
+      configuration:
+        output_path: grouped
+      executor_settings:
+        can_skip: true
+  n4:
+    type: eo_pipelines:xesmf_regrid
+    properties:
+      configuration:
+        target_grid_path: {target_grid_path}
+        max_distance: 50
+        cache_path: regridder_cache
+        output_path: regridded
+      executor_settings:
+        can_skip: true
+  n5:
+    type: eo_pipelines:missing_filter
+    properties:
+      configuration:
+        band: B2
+        max_missing_fraction: 0.5
+      executor_settings:
+        can_skip: true
+
+  n6:
+    type: eo_pipelines:time_stacker
+    properties:
+      configuration:
+        output_filename: MARGINALLAKES{id}-L1L2-Landsat89-v2.0-fv01.0.nc
+        output_path: stacked
+      executor_settings:
+        can_skip: true
+links:
+  - n0 => n1
+  - n1 => n2
+  - n2 => n3
+  - n3 => n4
+  - n4 => n5
+  - n5 => n6

@@ -12,15 +12,26 @@ class XESMFRegrid(PipelineStage):
         super().__init__(node_services, "xesmf_regrid")
         self.node_services = node_services
 
-        self.output_path = self.get_configuration().get("output_path", self.get_working_directory())
-        self.cache_path = self.get_configuration().get("cache_path", self.get_working_directory())
+        self.output_path = self.get_configuration().get("output_path",None)
+        if self.output_path is None:
+            self.output_path = self.get_working_directory()
+        else:
+            if not os.path.isabs(self.output_path):
+                self.output_path = os.path.join(self.get_working_directory(),self.output_path)
+
+        self.cache_path = self.get_configuration().get("cache_path", None)
+        if self.cache_path is None:
+            self.cache_path = self.get_working_directory()
+        else:
+            if not os.path.isabs(self.cache_path):
+                self.cache_path = os.path.join(self.get_working_directory(),self.cache_path)
 
         self.get_logger().info("eo_pipeline_stages.XESMFRegrid %s" % XESMFRegrid.VERSION)
 
     def get_parameters(self):
         return {
             "GRID_PATH": self.get_configuration().get("target_grid_path"),
-            "CACHE_PATH": self.cache_path,
+            "CACHE_PATH": "--cache-folder "+self.cache_path,
             "MAX_DISTANCE": format_int(self.get_configuration().get("max_distance",100))
         }
 
@@ -43,7 +54,7 @@ class XESMFRegrid(PipelineStage):
                     if filename.endswith(".nc"):
                         input_paths.append(os.path.join(dataset_folder,filename))
 
-                dataset_output_folder = os.path.join(self.output_path,dataset)
+                dataset_output_folder = os.path.abspath(os.path.join(self.output_path,dataset))
                 os.makedirs(dataset_output_folder, exist_ok=True)
                 output_scenes[dataset] = dataset_output_folder
 

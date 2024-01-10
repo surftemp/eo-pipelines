@@ -27,7 +27,7 @@ class Group(PipelineStage):
         for input_scenes in inputs["input"]:
 
             group_name = "___".join(sorted(input_scenes.keys()))
-            group_path = os.path.join(self.output_path, group_name)
+            group_path = os.path.abspath(os.path.join(self.output_path, group_name))
             output_paths[group_name] = group_path
             executor = self.create_executor(ExecutorType.Local)
 

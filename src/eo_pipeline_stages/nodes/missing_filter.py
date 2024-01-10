@@ -16,11 +16,12 @@ class MissingFilter(PipelineStage):
         if not os.path.isabs(self.output_folder):
             self.output_folder = os.path.join(self.get_working_directory(), self.output_folder)
 
-        self.get_logger().info("eo_pipeline_stages.LandsatAlign %s" % MissingFilter.VERSION)
+        self.get_logger().info("eo_pipeline_stages.MissingFilter %s" % MissingFilter.VERSION)
 
     def get_parameters(self):
         params = {}
-        params["OUTPUT_FOLDER"] = "--output-folder "+self.output_folder
+        params["BAND"] = str(self.get_configuration().get("band"))
+        params["MAX_MISSING_FRACTION"] = str(self.get_configuration().get("max_missing_fraction"))
         return params
 
     def execute_stage(self, inputs):
@@ -41,7 +42,7 @@ class MissingFilter(PipelineStage):
 
                 custom_env = self.get_parameters()
                 input_path = input[dataset]
-                custom_env["INPUT_FOLDERS"] = input_path
+                custom_env["INPUT_FOLDER"] = input_path
                 output_folder = os.path.join(self.output_folder,dataset)
                 custom_env["OUTPUT_FOLDER"] = output_folder
 
@@ -52,9 +53,10 @@ class MissingFilter(PipelineStage):
 
                 if count:
 
-                    script = os.path.join(os.path.split(__file__)[0], "time_stacker.sh")
+                    script = os.path.join(os.path.split(__file__)[0], "missing_filter.sh")
+
                     task_id = executor.queue_task(self.get_stage_id(),script, custom_env, self.get_working_directory(),
-                                                  description=os.path.split(input_path)[-1])
+                                                  description=dataset)
 
                     executor.wait_for_tasks()
                     if executor.get_task_result(task_id):

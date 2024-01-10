@@ -18,7 +18,7 @@
 #     You should have received a copy of the GNU General Public License
 #     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-"""Utility programming for stacking together individual scenes acquired at different times"""
+"""Utility for stacking together individual scenes acquired at different times"""
 
 import time
 import xarray as xr
@@ -123,7 +123,7 @@ def main():
 
     parser.add_argument(
         "--input-folders",
-        help="paths to the input folder(s) containing files to stack (note: filenames must sort in ascending time order)",
+        help="paths to the input folder(s) containing files to stack (note: filenames MUST sort in ascending time order)",
         nargs="+", required=True)
 
     parser.add_argument(
@@ -135,10 +135,10 @@ def main():
         "--limit", metavar="LIMIT", help="limit processed scenes by count", default=None, type=int)
 
     parser.add_argument(
-        "--sample", metavar="LIMIT", help="limit processed scenes by fraction", default=None, type=float)
+        "--sample", metavar="LIMIT", help="limit processed scenes by random fraction", default=None, type=float)
 
     parser.add_argument(
-        "--batch-size", type=int, metavar="BATCHSIZE", help="number of scenes to append before appending to disk",
+        "--batch-size", type=int, metavar="BATCHSIZE", help="number of scenes to append before writing to disk",
         default=20)
 
     args = parser.parse_args()

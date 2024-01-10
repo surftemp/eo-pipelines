@@ -16,24 +16,22 @@ class TimeStacker(PipelineStage):
         if not os.path.isabs(self.output_folder):
             self.output_folder = os.path.join(self.get_working_directory(),self.output_folder)
 
-        self.get_logger().info("eo_pipeline_stages.LandsatAlign %s" % TimeStacker.VERSION)
+        self.get_logger().info("eo_pipeline_stages.TimeStacker %s" % TimeStacker.VERSION)
 
     def get_parameters(self):
-        params = {}
-        params["OUTPUT_FOLDER"] = "--output-folder "+self.output_folder
-        return params
+        return {}
 
     def execute_stage(self, inputs):
 
         executor = self.create_executor()
+        output_filename = self.get_configuration().get("output_filename","stacked.nc")
 
         output_scenes = {}
 
         succeeded = 0
         failed = 0
 
-        if self.output_folder:
-            os.makedirs(self.output_folder,exist_ok=True)
+        os.makedirs(self.output_folder,exist_ok=True)
 
         for input in inputs["input"]:
 
@@ -41,9 +39,13 @@ class TimeStacker(PipelineStage):
 
                 custom_env = self.get_parameters()
                 input_path = input[dataset]
-                custom_env["INPUT_FOLDERS"] = input_path
-                output_folder = os.path.join(self.output_folder,dataset)
-                custom_env["OUTPUT_FOLDER"] = output_folder
+                custom_env["INPUT_FOLDER"] = input_path
+
+                dataset_output_folder = os.path.join(self.output_folder,dataset)
+                os.makedirs(dataset_output_folder, exist_ok=True)
+                output_path = os.path.join(dataset_output_folder,output_filename)
+
+                custom_env["OUTPUT_PATH"] = output_path
 
                 count = 0
                 for fname in os.listdir(input_path):
@@ -60,7 +62,7 @@ class TimeStacker(PipelineStage):
                     if executor.get_task_result(task_id):
                         succeeded += 1
                         if self.output_folder:
-                            output_scenes[dataset] = output_folder
+                            output_scenes[dataset] = dataset_output_folder
                     else:
                         failed += 1
 
