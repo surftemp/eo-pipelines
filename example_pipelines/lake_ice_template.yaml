@@ -32,9 +32,12 @@ nodes:
     type: eo_pipelines:usgs_fetch
     properties:
       configuration:
-        output_path: /gws/nopw/j04/lake_icesheet/sector_cache/{sector}
+        download_path: /gws/nopw/j04/lake_icesheet/sector_cache/{sector}
+        output_path: fetched
       executor_settings:
         can_skip: true
+        local:
+          timeout: 3600
         concurrent_execution_limit:
           tracking_folder: /gws/nopw/j04/lake_icesheet/usgs_execution_tracking
           limit: 1

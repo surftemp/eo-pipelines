@@ -74,8 +74,15 @@ class Fetch(PipelineStage):
         else:
             if not os.path.isabs(self.output_path):
                 self.output_path = os.path.join(self.get_working_directory(),self.output_path)
-        self.get_logger().info("eo_pipeline_stages.Fetch %s" % Fetch.VERSION)
 
+        self.download_path = self.get_configuration().get("download_path", None)
+        if self.download_path is None:
+            self.download_path = self.output_path
+        else:
+            if not os.path.isabs(self.download_path):
+                self.download_path = os.path.join(self.get_working_directory(), self.download_path)
+
+        self.get_logger().info("eo_pipeline_stages.Fetch %s" % Fetch.VERSION)
 
     def execute_stage(self,inputs):
 
@@ -129,6 +136,9 @@ class Fetch(PipelineStage):
                     dataset_output_folder = os.path.join(self.output_path,dataset)
                     os.makedirs(dataset_output_folder, exist_ok=True)
 
+                    dataset_download_folder = os.path.join(self.download_path, dataset)
+                    os.makedirs(dataset_download_folder, exist_ok=True)
+
                     custom_env = {
                             "USGS_USERNAME": usgs_username,
                             "USGS_PASSWORD": usgs_password,
@@ -136,6 +146,7 @@ class Fetch(PipelineStage):
                             "SCENES_CSV_PATH": scenes_csv_path,
                             "SUFFIXES": " ".join(suffixes),
                             "OUTPUT_FOLDER": dataset_output_folder,
+                            "DOWNLOAD_FOLDER": dataset_download_folder,
                             "FILE_CACHE_INDEX": file_cache_index
                     }
 
