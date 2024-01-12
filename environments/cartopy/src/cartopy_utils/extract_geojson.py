@@ -100,7 +100,7 @@ class BoxMerger:
 def export_to_csv(export_list, path, for_sector):
     with open(path,"w") as f:
         out = csv.writer(f)
-        out.writerow(["id,target_grid_path","sector","min_lat","min_lon","max_lat","max_lon","lat_resolution","lon_resolution","height","width","lake_ids"])
+        out.writerow(["id","target_grid_path","sector","min_lat","min_lon","max_lat","max_lon","lat_resolution","lon_resolution","height","width","lake_ids"])
         for (filename,box) in export_list:
             (lat_resolution,lon_resolution) = box.get_resolution()
             (height,width) = box.get_size_pixels()
@@ -133,7 +133,7 @@ def extract_boxes(df, output_folder, sector):
     for box in boxlist:
         filename = f"box{idx}.nc"
         path = os.path.join(output_folder, filename)
-        export_list.append((os.path.abspath(filename), box))
+        export_list.append((os.path.abspath(path), box))
         idx += 1
         box.export_netcdf(path)
 

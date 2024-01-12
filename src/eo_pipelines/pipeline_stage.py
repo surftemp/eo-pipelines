@@ -42,6 +42,7 @@ class PipelineStage:
         self.__environment = node_services.get_configuration().get_environment()
         self.__executor_settings = node_services.get_property("executor_settings",{})
         self.__executor_factory = None
+        self.__tracking_path = None
         if "executor_type" in self.__executor_settings:
             executor_type_name = self.__executor_settings["executor_type"]
             self.__default_executor_type = ExecutorType.parse_executor_type_name(executor_type_name)
@@ -104,11 +105,11 @@ class PipelineStage:
                 files = [f for f in os.listdir(tracking_folder) if f.endswith(".id")]
                 if len(files) >= limit:
                     # wait here
-                    time.sleep(random.random(2*PipelineStage.CONCURRENT_EXECUTION_CHECK_AVG_INTERVAL_S))
+                    time.sleep(random.random()+2*PipelineStage.CONCURRENT_EXECUTION_CHECK_AVG_INTERVAL_S)
                 else:
                     break
 
-        tracking_path = os.path.join(tracking_folder,tracking_filename)
+        self.__tracking_path = os.path.join(tracking_folder,tracking_filename)
 
         dawdle_start_time = time.time()
         self.__logger.info("Limiting concurrency for stage %s " % self.__stage_type)
@@ -118,22 +119,26 @@ class PipelineStage:
             wait_for_slot()
 
             # claim the slot
-            with open(tracking_path,"w") as f:
+            with open(self.__tracking_path,"w") as f:
                 f.write(str(datetime.datetime.utcnow()))
 
-            # wait a short while and recheck the files
-            time.sleep(random.random(10))
+            # wait a short while and recheck for collision
+            time.sleep(10*random.random())
 
             # recheck for unlikely contention with another execution
             files = [f for f in os.listdir(tracking_folder) if f.endswith(".id")]
             if len(files) > limit:
                 # back off and retry
-                os.remove(tracking_path)
+                os.remove(self.__tracking_path)
             else:
                 break
 
         dawdle_duration = int(time.time() - dawdle_start_time)
         self.__logger.info("Limit concurrency delay for stage %s complete (%d seconds)" % (self.__stage_type, dawdle_duration))
+
+    def release_tracking(self):
+        if self.__tracking_path:
+            os.remove(self.__tracking_path)
 
     def execute(self,inputs):
         start_time = time.time()
@@ -156,6 +161,8 @@ class PipelineStage:
             duration = int(time.time() - start_time)
             self.__logger.info("Failed stage %s with %s (%d seconds)" % (self.__stage_type, str(ex), duration))
             raise
+        finally:
+            self.release_tracking()
 
         return result
 
