@@ -46,8 +46,8 @@ class LandsatImport(PipelineStage):
         inject_metadata_cmd = ""
         if inject_metadata is not None:
             inject_metadata_cmd = "--inject-metadata"
-            for (key,value) in inject_metadata:
-                inject_metadata_cmd += " {key}=\"{value}\""
+            for (key,value) in inject_metadata.items():
+                inject_metadata_cmd += f" {key}=\"{value}\""
 
         for input in inputs["input"]:
 
