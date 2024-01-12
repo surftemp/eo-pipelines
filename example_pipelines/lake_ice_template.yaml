@@ -25,6 +25,9 @@ nodes:
     properties:
       executor_settings:
         can_skip: true
+        concurrent_execution_limit:
+          tracking_folder: /gws/nopw/j04/lake_icesheet/usgs_execution_tracking
+          limit: 1
   n1:
     type: eo_pipelines:usgs_fetch
     properties:
@@ -32,6 +35,9 @@ nodes:
         output_path: /gws/nopw/j04/lake_icesheet/sector_cache/{sector}
       executor_settings:
         can_skip: true
+        concurrent_execution_limit:
+          tracking_folder: /gws/nopw/j04/lake_icesheet/usgs_execution_tracking
+          limit: 1
   n2:
     type: eo_pipelines:landsat_import
     properties:

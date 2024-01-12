@@ -127,8 +127,6 @@ def extract_boxes(df, output_folder, sector):
 
     boxlist = merger.get_merged_boxes()
 
-    print("\n".join(map(str, boxlist[:10])))
-
     os.makedirs(output_folder, exist_ok=True)
     idx = 0
     export_list = []
@@ -152,31 +150,7 @@ def extract_shapes(df, output_folder):
         with open(path,"w") as f:
             f.write(j)
 
-def extract_kml(df, output_path):
-    import simplekml
-    import json
 
-    with open("myfile.geojson") as f:
-        data = json.load(f)
-    kml = simplekml.Kml()
-    for feature in data['features']:
-        geom = feature['geometry']
-        geom_type = geom['type']
-        if geom_type == 'Polygon':
-            kml.newpolygon(name='test',
-                           description='test',
-                           outerboundaryis=geom['coordinates'][0])
-        elif geom_type == 'LineString':
-            kml.newlinestring(name='test',
-                              description='test',
-                              coords=geom['coordinates'])
-        elif geom_type == 'Point':
-            kml.newpoint(name='test',
-                         description='test',
-                         coords=[geom['coordinates']])
-        else:
-            print("ERROR: unknown type:", geom_type)
-    kml.save('kml_file.kml')
 
 if __name__ == '__main__':
 
@@ -185,7 +159,7 @@ if __name__ == '__main__':
     parser.add_argument("--inventory-path",help="path to geojson file containing inventory",default="/home/dev/Projects/greenland_lakes/lakes.geojson")
     parser.add_argument("--output-folder",help="path to output folder to export details of target grids",default="extract")
     parser.add_argument("--sector",help="name of sector to process",default="SW")
-    parser.add_argument("--export-kml", help="export shapes to a KML file")
+
     args = parser.parse_args()
 
     # Leverett lake ids are 765 766 1019 1020
@@ -199,7 +173,5 @@ if __name__ == '__main__':
     # extract individual lake geojsons
     extract_shapes(df,os.path.join(args.output_folder,"lakes"))
 
-    if args.export_kml:
-        extract_kml(df,args.export_kml)
 
 
