@@ -141,6 +141,23 @@
                 }
             },
             "classname": "nodes.missing_filter.MissingFilter"
+        },
+        "add_masks": {
+            "metadata": {
+                "name": "AddMasks",
+                "description": "Add masks defined in geojson to a netcdf file"
+            },
+            "input_ports": {
+                "input": {
+                    "link_type": "eo_pipelines:netcdf_sceneset"
+                }
+            },
+            "output_ports": {
+                "output": {
+                    "link_type": "eo_pipelines:netcdf_sceneset"
+                }
+            },
+            "classname": "nodes.add_masks.AddMasks"
         }
     },
     "link_types": {

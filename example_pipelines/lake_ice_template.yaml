@@ -78,13 +78,21 @@ nodes:
         max_missing_fraction: 0.5
       executor_settings:
         can_skip: true
-
   n6:
     type: eo_pipelines:time_stacker
     properties:
       configuration:
         output_filename: MARGINALLAKES{id}-L1L2-Landsat89-v2.0-fv01.0.nc
         output_path: stacked
+      executor_settings:
+        can_skip: true
+  n7:
+    type: eo_pipelines:add_masks
+    properties:
+      configuration:
+        layer_names: {lake_ids}
+        layer_paths: {lake_masks}
+        output_path: masked
       executor_settings:
         can_skip: true
 links:
@@ -94,3 +102,4 @@ links:
   - n3 => n4
   - n4 => n5
   - n5 => n6
+  - n6 => n7

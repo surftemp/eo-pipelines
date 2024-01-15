@@ -97,15 +97,19 @@ class BoxMerger:
         return self.merged_boxes + [self.current_box] if self.current_box else []
 
 
-def export_to_csv(export_list, path, for_sector):
+def export_to_csv(export_list, path, lakes_folder, for_sector):
     with open(path,"w") as f:
         out = csv.writer(f)
-        out.writerow(["id","target_grid_path","sector","min_lat","min_lon","max_lat","max_lon","lat_resolution","lon_resolution","height","width","lake_ids"])
+        out.writerow(["id","target_grid_path","sector","min_lat","min_lon","max_lat","max_lon","lat_resolution","lon_resolution","height","width","lake_ids","lake_masks"])
         for (filename,box) in export_list:
             (lat_resolution,lon_resolution) = box.get_resolution()
             (height,width) = box.get_size_pixels()
             id = "_".join(box.lake_ids)
-            out.writerow([id,filename,for_sector,box.min_lat,box.min_lon,box.max_lat,box.max_lon,lat_resolution,lon_resolution,height,width,";".join(box.lake_ids)])
+            lake_masks = []
+            for lake_id in box.lake_ids:
+                lake_masks.append(os.path.join(lakes_folder,f"lake{lake_id}.geojson"))
+            lake_masks_str = ";".join(lake_masks)
+            out.writerow([id,filename,for_sector,box.min_lat,box.min_lon,box.max_lat,box.max_lon,lat_resolution,lon_resolution,height,width,";".join(box.lake_ids),lake_masks_str])
 
 
 def extract_boxes(df, output_folder, sector):
@@ -137,7 +141,7 @@ def extract_boxes(df, output_folder, sector):
         idx += 1
         box.export_netcdf(path)
 
-    export_to_csv(export_list, os.path.join(output_folder, "summary.csv"), sector)
+    return export_list
 
 def extract_shapes(df, output_folder):
     os.makedirs(output_folder,exist_ok=True)
@@ -169,9 +173,12 @@ if __name__ == '__main__':
 
     df = df.drop_duplicates("LakeID")
     # work out merged boxes
-    extract_boxes(df,os.path.join(args.output_folder,"boxes"),args.sector)
+    export_list = extract_boxes(df,os.path.join(args.output_folder,"boxes"),args.sector)
     # extract individual lake geojsons
     extract_shapes(df,os.path.join(args.output_folder,"lakes"))
+    # write a CSV file summarising the bounding boxes extracted
+    export_to_csv(export_list, os.path.join(args.output_folder, "summary.csv"),
+                  os.path.abspath(os.path.join(args.output_folder,"lakes")), args.sector)
 
 
 
