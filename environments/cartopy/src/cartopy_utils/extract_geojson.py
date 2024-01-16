@@ -100,16 +100,19 @@ class BoxMerger:
 def export_to_csv(export_list, path, lakes_folder, for_sector):
     with open(path,"w") as f:
         out = csv.writer(f)
-        out.writerow(["id","target_grid_path","sector","min_lat","min_lon","max_lat","max_lon","lat_resolution","lon_resolution","height","width","lake_ids","lake_masks"])
+        out.writerow(["id","target_grid_path","sector","min_lat","min_lon","max_lat","max_lon","lat_resolution","lon_resolution","height","width","lake_ids","lake_variables","lake_masks"])
         for (filename,box) in export_list:
             (lat_resolution,lon_resolution) = box.get_resolution()
             (height,width) = box.get_size_pixels()
             id = "_".join(box.lake_ids)
             lake_masks = []
+            lake_variables = []
             for lake_id in box.lake_ids:
                 lake_masks.append(os.path.join(lakes_folder,f"lake{lake_id}.geojson"))
+                lake_variables.append(f"lake{lake_id}")
+            lake_variables_str = ";".join(lake_variables)
             lake_masks_str = ";".join(lake_masks)
-            out.writerow([id,filename,for_sector,box.min_lat,box.min_lon,box.max_lat,box.max_lon,lat_resolution,lon_resolution,height,width,";".join(box.lake_ids),lake_masks_str])
+            out.writerow([id,filename,for_sector,box.min_lat,box.min_lon,box.max_lat,box.max_lon,lat_resolution,lon_resolution,height,width,";".join(box.lake_ids),lake_variables_str,lake_masks_str])
 
 
 def extract_boxes(df, output_folder, sector):

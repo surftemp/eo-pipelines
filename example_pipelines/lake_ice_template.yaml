@@ -90,7 +90,7 @@ nodes:
     type: eo_pipelines:add_masks
     properties:
       configuration:
-        layer_names: {lake_ids}
+        layer_names: {lake_variables}
         layer_paths: {lake_masks}
         output_path: masked
       executor_settings:

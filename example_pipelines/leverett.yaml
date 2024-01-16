@@ -45,8 +45,46 @@ nodes:
     properties:
       configuration:
         output_path: /gws/nopw/j04/lake_icesheet/leverett/grouped
-
+  n4:
+    type: eo_pipelines:xesmf_regrid
+    properties:
+      configuration:
+        target_grid_path: {target_grid_path}
+        max_distance: 50
+        cache_path: regridder_cache
+        output_path: regridded
+      executor_settings:
+        can_skip: true
+  n5:
+    type: eo_pipelines:missing_filter
+    properties:
+      configuration:
+        band: B2
+        max_missing_fraction: 0.5
+      executor_settings:
+        can_skip: true
+  n6:
+    type: eo_pipelines:time_stacker
+    properties:
+      configuration:
+        output_filename: MARGINALLAKES{id}-L1L2-Landsat89-v2.0-fv01.0.nc
+        output_path: stacked
+      executor_settings:
+        can_skip: true
+  n7:
+    type: eo_pipelines:add_masks
+    properties:
+      configuration:
+        layer_names: {lake_variables}
+        layer_paths: {lake_masks}
+        output_path: masked
+      executor_settings:
+        can_skip: true
 links:
   - n0 => n1
   - n1 => n2
   - n2 => n3
+  - n3 => n4
+  - n4 => n5
+  - n5 => n6
+  - n6 => n7
