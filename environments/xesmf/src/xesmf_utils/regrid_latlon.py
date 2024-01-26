@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+import time
 
 #     EOCIS high resolution data processing for the British Isles
 #
@@ -22,6 +23,9 @@ import xarray as xr
 import numpy as np
 import os
 import logging
+
+NUM_RETRIES = 5
+RETRY_DELAY = 60
 
 class RegridLatLon:
 
@@ -65,79 +69,91 @@ class RegridLatLon:
         accumulated_mins = {}
 
         for input_file_path in input_file_paths:
+            complete = False
+            for retry in range(0,NUM_RETRIES):
+                try:
+                    input_file_name = os.path.split(input_file_path)[1]
 
-            input_file_name = os.path.split(input_file_path)[1]
+                    output_file_path = None
+                    if self.output_folder:
+                        output_file_path = os.path.join(self.output_folder, input_file_name)
 
-            output_file_path = None
-            if self.output_folder:
-                output_file_path = os.path.join(self.output_folder, input_file_name)
-                if os.path.exists(output_file_path):
-                    self.logger.warning(f"skipping: {input_file_name} {idx}/{total} output already exists?")
-                    idx += 1
-                    continue
+                    self.logger.info(f"processing: {input_file_name} {idx}/{total}")
 
-            self.logger.info(f"processing: {input_file_name} {idx}/{total}")
+                    ds = xr.open_dataset(input_file_path)
 
-            ds = xr.open_dataset(input_file_path)
+                    indices_nj = np.int32(np.round(target_height * (ds.lat - lat0)/(latN-lat0)))
+                    indices_ni = np.int32(np.round(target_width * (ds.lon - lon0)/(lonN-lon0)))
 
-            indices_nj = np.int32(np.round(target_height * (ds.lat - lat0)/(latN-lat0)))
-            indices_ni = np.int32(np.round(target_width * (ds.lon - lon0)/(lonN-lon0)))
+                    # set indices to (target_height,target_width) for points that lie outside the target grid
+                    indices_nj = np.where(indices_nj < 0, target_height, indices_nj)
+                    indices_nj = np.where(indices_nj >= target_height, target_height, indices_nj)
+                    indices_ni = np.where(indices_ni < 0, target_width, indices_ni)
+                    indices_ni = np.where(indices_ni >= target_width, target_width, indices_ni)
 
-            # set indices to (target_height,target_width) for points that lie outside the target grid
-            indices_nj = np.where(indices_nj < 0, target_height, indices_nj)
-            indices_nj = np.where(indices_nj >= target_height, target_height, indices_nj)
-            indices_ni = np.where(indices_ni < 0, target_width, indices_ni)
-            indices_ni = np.where(indices_ni >= target_width, target_width, indices_ni)
+                    output_ds = None
+                    if output_file_path:
+                        output_ds = xr.Dataset()
+                        output_ds["time"] = ds["time"]
+                        output_ds["lat"] = grid["lat"]
+                        output_ds["lon"] = grid["lon"]
 
-            output_ds = None
-            if output_file_path:
-                output_ds = xr.Dataset()
-                output_ds["time"] = ds["time"]
-                output_ds["lat"] = grid["lat"]
-                output_ds["lon"] = grid["lon"]
+                        encodings = {}
+                        encodings["lat"] = {"zlib": True, "complevel": 5}
+                        encodings["lon"] = {"zlib": True, "complevel": 5}
 
-                encodings = {}
-                encodings["lat"] = {"zlib": True, "complevel": 5}
-                encodings["lon"] = {"zlib": True, "complevel": 5}
+                    for v in ds.variables:
+                        if v != "lat" and v != "lon" and v != "time":
+                            if len(ds[v].shape) == 3:
+                                target_data = np.zeros((1,target_height + 1, target_width + 1))
+                                target_data[:, :] = np.nan
+                                target_data[0,indices_nj,indices_ni] = ds[v].data
+                                if output_ds is not None:
+                                    output_ds[v] = xr.DataArray(target_data[:,:-1,:-1], dims=("time","lat","lon"))
+                                    encodings[v] = {"zlib": True, "complevel": 5}
+                                if self.output_min_path:
+                                    if v not in accumulated_mins:
+                                        a = np.zeros((target_height,target_width))
+                                        a[:,:] = np.nan
+                                        accumulated_mins[v] = a
+                                    accumulated_mins[v] = np.fmin(target_data[0,:-1,:-1],accumulated_mins[v])
 
-            for v in ds.variables:
-                if v != "lat" and v != "lon" and v != "time":
-                    if len(ds[v].shape) == 3:
-                        target_data = np.zeros((1,target_height + 1, target_width + 1))
-                        target_data[:, :] = np.nan
-                        target_data[0,indices_nj,indices_ni] = ds[v].data
-                        if output_ds is not None:
-                            output_ds[v] = xr.DataArray(target_data[:,:-1,:-1], dims=("time","lat","lon"))
-                            encodings[v] = {"zlib": True, "complevel": 5}
-                        if self.output_min_path:
-                            if v not in accumulated_mins:
-                                a = np.zeros((target_height,target_width))
-                                a[:,:] = np.nan
-                                accumulated_mins[v] = a
-                            accumulated_mins[v] = np.fmin(target_data[0,:-1,:-1],accumulated_mins[v])
+                    if output_file_path:
+                        self.logger.info(f"writing: {output_file_path}")
+                        output_ds.to_netcdf(output_file_path,encoding=encodings)
+                    complete = True
+                    break
 
-            if output_file_path:
-                self.logger.info(f"writing: {output_file_path}")
-                output_ds.to_netcdf(output_file_path,encoding=encodings)
+                except Exception as ex:
+                    self.logger.warning(f"Error processing: {input_file_name} : {str(ex)}")
+                    time.sleep(RETRY_DELAY)
+
+            if not complete:
+                self.logger.error(f"Unable to process: {input_file_name}")
 
             processed += 1
             if limit is not None and processed >= limit:
-                print(f"stopping after processing {processed} scenes")
+                self.logger.info(f"stopping after processing {processed} scenes")
                 break
             idx += 1
 
         if self.output_min_path:
             self.logger.info(f"writing: {self.output_min_path}")
-            encodings = {}
-            for v in accumulated_mins:
-                da = xr.DataArray(data=accumulated_mins[v],dims=("lat","lon"))
-                # interpolate using rolling mean
-                # means = da.rolling(lat=3, lon=3, center=True, min_periods=1).mean()
-                # da = da.where(~np.isnan(da), means)
-                grid[v] = da
-                encodings[v] = {"zlib": True, "complevel": 5, "dtype": "float32",
-                                "chunksizes": [self.output_min_chunksize, self.output_min_chunksize]}
-            grid.to_netcdf(self.output_min_path, encoding=encodings)
+            for retry in range(0, NUM_RETRIES):
+                try:
+                    encodings = {}
+                    for v in accumulated_mins:
+                        da = xr.DataArray(data=accumulated_mins[v],dims=("lat","lon"))
+                        # interpolate using rolling mean
+                        # means = da.rolling(lat=3, lon=3, center=True, min_periods=1).mean()
+                        # da = da.where(~np.isnan(da), means)
+                        grid[v] = da
+                        encodings[v] = {"zlib": True, "complevel": 5, "dtype": "float32",
+                                        "chunksizes": [self.output_min_chunksize, self.output_min_chunksize]}
+                    grid.to_netcdf(self.output_min_path, encoding=encodings)
+                except Exception as ex:
+                    self.logger.error(f"Error writing: {self.output_min_path} : {str(ex)}")
+                    time.sleep(RETRY_DELAY)
 
 
 def main():

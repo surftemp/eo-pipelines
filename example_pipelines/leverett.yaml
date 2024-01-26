@@ -24,32 +24,37 @@ nodes:
   n0:
     type: eo_pipelines:usgs_search
     properties:
-      configuration:
-        output_path: /gws/nopw/j04/lake_icesheet/leverett/list
+      executor_settings:
+        can_skip: true
   n1:
     type: eo_pipelines:usgs_fetch
     properties:
       configuration:
-        output_path: /gws/nopw/j04/lake_icesheet/leverett/fetched
+        output_path: fetched
+      executor_settings:
+        can_skip: true
   n2:
-    type: eo_pipelines:usgs_import
+    type: eo_pipelines:landsat_import
     properties:
       executor_settings:
+        can_skip: 4
         executor: local
         local:
           nr_threads: 4
       configuration:
-        output_path: /gws/nopw/j04/lake_icesheet/leverett/imported
+        output_path: imported
   n3:
     type: eo_pipelines:usgs_group
     properties:
       configuration:
-        output_path: /gws/nopw/j04/lake_icesheet/leverett/grouped
+        output_path: grouped
+      executor_settings:
+        can_skip: true
   n4:
     type: eo_pipelines:xesmf_regrid
     properties:
       configuration:
-        target_grid_path: {target_grid_path}
+        target_grid_path: /gws/nopw/j04/lake_icesheet/leverett/leverett_box.nc
         max_distance: 50
         cache_path: regridder_cache
         output_path: regridded
@@ -67,7 +72,7 @@ nodes:
     type: eo_pipelines:time_stacker
     properties:
       configuration:
-        output_filename: MARGINALLAKES{id}-L1L2-Landsat89-v2.0-fv01.0.nc
+        output_filename: MARGINALLAKES-765_766_1019_1020-L1L2-Landsat89-v2.0-fv01.0.nc
         output_path: stacked
       executor_settings:
         can_skip: true
@@ -75,9 +80,16 @@ nodes:
     type: eo_pipelines:add_masks
     properties:
       configuration:
-        layer_names: {lake_variables}
-        layer_paths: {lake_masks}
+        layer_names: lake765;lake766;lake1019;lake1020
+        layer_paths: /gws/nopw/j04/lake_icesheet/marginal_lakes/extract/lakes/lake765.geojson;/gws/nopw/j04/lake_icesheet/marginal_lakes/extract/lakes/lake766.geojson;/gws/nopw/j04/lake_icesheet/marginal_lakes/extract/lakes/lake1019.geojson;/gws/nopw/j04/lake_icesheet/marginal_lakes/extract/lakes/lake1020.geojson
         output_path: masked
+      executor_settings:
+        can_skip: true
+  n8:
+    type: eo_pipelines:netcdf2html
+    properties:
+      configuration:
+        output_folder: /gws/nopw/j04/nceo_uor/public/niall/lake_icesheet/leverett
       executor_settings:
         can_skip: true
 links:
@@ -88,3 +100,4 @@ links:
   - n4 => n5
   - n5 => n6
   - n6 => n7
+  - n7 => n8

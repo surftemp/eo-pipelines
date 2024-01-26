@@ -158,6 +158,20 @@
                 }
             },
             "classname": "nodes.add_masks.AddMasks"
+        },
+        "netcdf2html": {
+            "metadata": {
+                "name": "netcdf2HTML",
+                "description": "Convert netcdf files to explorable HTML"
+            },
+            "input_ports": {
+                "input": {
+                    "link_type": "eo_pipelines:netcdf_sceneset"
+                }
+            },
+            "output_ports": {
+            },
+            "classname": "nodes.netcdf2html.Netcdf2Html"
         }
     },
     "link_types": {
