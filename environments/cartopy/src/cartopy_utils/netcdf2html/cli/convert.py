@@ -20,12 +20,14 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+
 import os
 import xarray as xr
 import numpy as np
 import argparse
 import shutil
 import json
+import fnmatch
 
 from cartopy_utils.netcdf2html.htmlfive.html5_builder import Html5Builder
 
@@ -48,9 +50,9 @@ class LayerRGB:
         return False
 
     def build(self,ds,path):
-        red = ds[self.red_variable].data[0, :, :]
-        green = ds[self.green_variable].data[0, :, :]
-        blue = ds[self.blue_variable].data[0, :, :]
+        red = ds[self.red_variable].squeeze().data[:, :]
+        green = ds[self.green_variable].squeeze().data[:, :]
+        blue = ds[self.blue_variable].squeeze().data[:, :]
 
         save_image_falsecolour(red, green, blue, path)
 
@@ -67,7 +69,7 @@ class LayerSingleBand:
 
     def build(self,ds,path):
         da = ds[self.band_name]
-        save_image(da.data[0, :, :], self.vmin, self.vmax, path, self.cmap_name)
+        save_image(da.squeeze().data[:, :], self.vmin, self.vmax, path, self.cmap_name)
 
     def has_legend(self):
         return True
@@ -94,7 +96,7 @@ class LayerMask:
 
     def build(self,ds,path):
         da = ds[self.band_name]
-        save_image_mask(da.data[0, :, :], path, self.r, self.g, self.b)
+        save_image_mask(da.squeeze().data[:, :], path, self.r, self.g, self.b)
 
 
 class Convert:
@@ -109,28 +111,49 @@ class Convert:
         os.makedirs(image_folder,exist_ok=True)
         shutil.copyfile(js_path,os.path.join(self.output_folder,"index.js"))
         shutil.copyfile(css_path, os.path.join(self.output_folder, "index.css"))
+        self.layer_specs = []
         self.layer_definitions = []
 
-    def add_layer(self, spec):
-        comps = spec.split(":")
-        name = comps[0]
-        layer_type = comps[1]
+    def add_layer(self, name, type, args):
+        self.layer_specs.append((name,type,args))
+
+    def collect_layers(self, time_slices):
+        variable_names = set()
+        for (_,ds) in time_slices:
+            for name in ds.variables:
+                variable_names.add(name)
+
+        for (name,type,args) in self.layer_specs:
+
+            # if the name contains a wildcard, use it to match with one or more variable names in the data
+            if "*" in name or "+" in name:
+                for variable_name in variable_names:
+                    if fnmatch.fnmatch(variable_name,name):
+                        self.collect_layer(variable_name,type,args)
+            else:
+                self.collect_layer(name,type,args)
+
+    def collect_layer(self,name,layer_type,args):
         if layer_type == "single":
-            variable = comps[2]
-            min_value = float(comps[3])
-            max_value = float(comps[4])
-            cmap_name = comps[5]
+            variable = args[0]
+            if variable == "":
+                variable = name # assume variable is the same as the name if not specified
+            min_value = float(args[1])
+            max_value = float(args[2])
+            cmap_name = args[3]
             self.layer_definitions.append(LayerSingleBand(name,name,variable,min_value,max_value,cmap_name))
         elif layer_type == "mask":
-            variable = comps[2]
-            r = int(comps[3])
-            g = int(comps[4])
-            b = int(comps[5])
+            variable = args[0]
+            if variable == "":
+                variable = name # assume variable is the same as the name if not specified
+            r = int(args[1])
+            g = int(args[2])
+            b = int(args[3])
             self.layer_definitions.append(LayerMask(name,name,variable,r,g,b))
         elif layer_type == "rgb":
-            red_variable = comps[2]
-            green_variable = comps[3]
-            blue_variable = comps[4]
+            red_variable = args[0]
+            green_variable = args[1]
+            blue_variable = args[2]
             self.layer_definitions.append(LayerRGB(name,name,red_variable,green_variable,blue_variable))
         else:
             print(f"Unable to add layer of type {layer_type}")
@@ -151,7 +174,7 @@ class Convert:
                     timestamp = str(ds["time"].data[0])[:10]
                     time_slices.append((timestamp, ds))
                     image_width = ds.lat.shape[0]
-            time_slices = sorted(time_slices, key=lambda item: item[0]);
+            time_slices = sorted(time_slices, key=lambda item: item[0])
         else:
             ds = xr.open_dataset(self.input_path)
             image_width = ds.lat.shape[0]
@@ -159,6 +182,8 @@ class Convert:
             for t in range(tlen):
                 timestamp = str(ds["time"].data[t])[:10]
                 time_slices.append((timestamp, ds.isel(time=slice(t, t + 1))))
+
+        self.collect_layers(time_slices)
 
         builder = Html5Builder(language="en")
 
@@ -280,13 +305,43 @@ def main():
     parser.add_argument("--title", help="set the title of the plot", required=True)
     parser.add_argument("--input-path", help="netcdf4 file or folder containing netcdf4 files to visualise", required=True)
     parser.add_argument("--output-path", help="folder to write html output", default="html_output")
-    parser.add_argument("--layers", nargs="+", help="specify one or more layer specifications", required=True)
+    parser.add_argument("--layers", nargs="*", help="JSON file specifying one or more layer specifications")
+    parser.add_argument("--layer-config-path", help="JSON file specifying one or more layer specifications")
 
     args = parser.parse_args()
 
     c = Convert(args.input_path, os.path.abspath(args.output_path), args.title)
-    for layer_spec in args.layers:
-        c.add_layer(layer_spec)
+
+    if args.layers:
+        for layer_spec in args.layers:
+            comps = layer_spec.split(":")
+            c.add_layer(comps[0],comps[1],tuple(comps[2:]))
+
+    if args.layer_config_path:
+        with open(args.layer_config_path) as f:
+            layer_specs = json.loads(f.read())
+            for (layer_name,layer) in layer_specs.items():
+
+                layer_type = layer["type"]
+                if layer_type == "single":
+                    layer_band = layer.get("band", "")
+                    vmin = layer["min_value"]
+                    vmax = layer["max_value"]
+                    cmap = layer.get("cmap", "coolwarm")
+                    c.add_layer(layer_name,"single",(layer_band,vmin,vmax,cmap))
+                elif layer_type == "mask":
+                    layer_band = layer.get("band", "")
+                    r = layer["r"]
+                    g = layer["g"]
+                    b = layer["b"]
+                    c.add_layer(layer_name,"mask",(layer_band,r,g,b))
+                elif layer_type == "rgb":
+                    red_band = layer["red_band"]
+                    green_band = layer["green_band"]
+                    blue_band = layer["blue_band"]
+                    c.add_layer(layer_name,"rgb",(red_band,green_band,blue_band))
+
+
     c.run()
 
 if __name__ == '__main__':

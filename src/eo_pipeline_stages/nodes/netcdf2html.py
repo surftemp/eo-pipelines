@@ -41,26 +41,11 @@ class Netcdf2Html(PipelineStage):
         self.get_logger().info("eo_pipeline_stages.netcdf2html %s" % Netcdf2Html.VERSION)
 
     def get_parameters(self):
-        layer_list = []
-        layers = self.get_configuration().get("layers", {})
-        for layer_name in layers:
-            layer = layers[layer_name]
-            layer_type = layer["type"]
-            if layer_type == "single":
-                layer_band = layer["band"]
-                vmin = layer["min_value"]
-                vmax = layer["max_value"]
-                layer_list.append(f'"{layer_name}:single:{layer_band}:{vmin}:{vmax}"')
-            elif layer_name == "mask":
-                layer_band = layer["band"]
-                layer_list.append(f'"{layer_name}:mask:{layer_band}"')
-            elif layer_name == "rgb":
-                red_band = layer["red_band"]
-                green_band = layer["green_band"]
-                blue_band = layer["blue_band"]
-                layer_list.append(f'"{layer_name}:rgb:{red_band}:{green_band}:{blue_band}"')
-
-        return { "LAYERS": " ".join(layer_list) }
+        parameters = {}
+        title = self.get_configuration().get("title","")
+        if title:
+            parameters["TITLE"] = title
+        return parameters
 
     def execute_stage(self, inputs):
 
@@ -70,6 +55,12 @@ class Netcdf2Html(PipelineStage):
 
         succeeded = 0
         failed = 0
+
+        layer_config_path = os.path.join(self.get_working_directory(),"layers.json")
+
+        import json
+        with open(layer_config_path,"w") as f:
+            f.write(json.dumps(self.get_configuration().get("layers")))
 
         if self.output_folder:
             os.makedirs(self.output_folder,exist_ok=True)
@@ -98,8 +89,17 @@ class Netcdf2Html(PipelineStage):
 
                     custom_env = {
                         "INPUT_PATH": input_path,
-                        "OUTPUT_PATH": output_path
+                        "OUTPUT_PATH": output_path,
+                        "LAYER_CONFIG_PATH": layer_config_path
                     }
+
+                    custom_env.update(self.get_parameters())
+
+                    if "TITLE" not in custom_env:
+                        custom_env["TITLE"] = filename_root
+
+                    import json
+                    print(json.dumps(custom_env))
 
                     task_id = executor.queue_task(self.get_stage_id(),script, custom_env, self.get_working_directory(),
                                                   description=dataset)
@@ -123,6 +123,8 @@ class Netcdf2Html(PipelineStage):
                 self.get_logger().error(summary)
             else:
                 self.get_logger().warn(summary)
+        if failed > 0:
+            raise Exception("Failed")
         return {}
 
 
