@@ -39,5 +39,5 @@ class Box:
         target_ds.to_netcdf(to_path)
 
 
-box = Box(67.02, -50.164166, 67.076666, -49.926666, 50)
-box.export_netcdf("leverett_box.nc")
+box = Box(-11.5, -76.7, -11.3, -76.5, 100)
+box.export_netcdf("andes_box_100m.nc")

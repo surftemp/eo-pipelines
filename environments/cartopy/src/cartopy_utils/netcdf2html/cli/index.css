@@ -23,3 +23,15 @@ img {
     padding: 3px;
     margin: 3px;
 }
+
+fieldset {
+    border-radius: 5px;
+}
+
+.legend {
+    vertical-align:middle;
+}
+
+td {
+    text-align: left;
+}

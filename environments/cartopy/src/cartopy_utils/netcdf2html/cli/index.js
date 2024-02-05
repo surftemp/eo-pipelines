@@ -113,14 +113,24 @@ function boot() {
       r.addEventListener("input", create_opacity_callback(img, layer.name));
    });
 
-   let show_sliders = document.getElementById("show_sliders");
-   let slider_container = document.getElementById("slider_container");
-   show_sliders.addEventListener("input", (evt) => {
+   let show_layers = document.getElementById("show_layers");
+   let layer_container = document.getElementById("layer_container");
+   show_layers.addEventListener("input", (evt) => {
       let s = "none";
       if (evt.target.checked) {
          s = "block";
       }
-      slider_container.style.display = s;
+      layer_container.style.display = s;
+   });
+
+   let show_filters = document.getElementById("show_filters");
+   let filter_container = document.getElementById("filter_container");
+   show_filters.addEventListener("input", (evt) => {
+      let s = "none";
+      if (evt.target.checked) {
+         s = "block";
+      }
+      filter_container.style.display = s;
    });
 
 
@@ -130,7 +140,7 @@ function boot() {
       let zoom = Number.parseInt(zoom_control.value);
       layer_list.forEach(layer => {
          let img = document.getElementById(layer.name);
-         img.width = zoom*image_width;
+         img.width = Math.round(Math.sqrt(zoom)*image_width);
       });
    }
    zoom_control.addEventListener("input", (evt) => {

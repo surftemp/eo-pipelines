@@ -41,7 +41,26 @@ class Netcdf2Html(PipelineStage):
         self.get_logger().info("eo_pipeline_stages.netcdf2html %s" % Netcdf2Html.VERSION)
 
     def get_parameters(self):
-        return {}
+        layer_list = []
+        layers = self.get_configuration().get("layers", {})
+        for layer_name in layers:
+            layer = layers[layer_name]
+            layer_type = layer["type"]
+            if layer_type == "single":
+                layer_band = layer["band"]
+                vmin = layer["min_value"]
+                vmax = layer["max_value"]
+                layer_list.append(f'"{layer_name}:single:{layer_band}:{vmin}:{vmax}"')
+            elif layer_name == "mask":
+                layer_band = layer["band"]
+                layer_list.append(f'"{layer_name}:mask:{layer_band}"')
+            elif layer_name == "rgb":
+                red_band = layer["red_band"]
+                green_band = layer["green_band"]
+                blue_band = layer["blue_band"]
+                layer_list.append(f'"{layer_name}:rgb:{red_band}:{green_band}:{blue_band}"')
+
+        return { "LAYERS": " ".join(layer_list) }
 
     def execute_stage(self, inputs):
 
