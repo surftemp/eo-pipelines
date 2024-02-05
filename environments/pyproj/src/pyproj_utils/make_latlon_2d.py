@@ -34,14 +34,28 @@ def main():
     args = parser.parse_args()
 
     ds = xr.open_dataset(args.input_path)
+    lon_dim = ds.lon.dims[0]
+    lat_dim = ds.lat.dims[0]
 
+    print(f"lon dim={lon_dim}, lat_dim={lat_dim}")
+
+    data_vars = []
     for v in ds.variables:
         if v == "lat" or v == "lon":
             continue
         da = ds[v]
         if "lat" in da.dims:
+            new_dims = []
+            for dim in da.dims:
+                if dim == lat_dim:
+                    new_dims.append("y")
+                elif dim == lon_dim:
+                    new_dims.append("x")
+                else:
+                    new_dims.append(dim)
             ds = ds.drop_vars([v])
-            ds[v] = xr.DataArray(da.data,dims=("y","x"),attrs=da.attrs)
+            ds[v] = xr.DataArray(da.data,new_dims,attrs=da.attrs)
+            data_vars.append(v)
 
     n_lat = ds.lat.shape[0]
     n_lon = ds.lon.shape[0]
@@ -58,12 +72,11 @@ def main():
     ds["lat"] = xr.DataArray(lat_data, dims=("y","x"), attrs=lat_attrs)
     ds["lon"] = xr.DataArray(lon_data, dims=("y","x"), attrs=lon_attrs)
 
-    encoding = {
-        "lat": {"dtype": "float32", "zlib": True, "complevel": 5},
-        "lon": {"dtype": "float32", "zlib": True, "complevel": 5}
-    }
+    encodings = {}
+    for var in data_vars + ["lat", "lon"]:
+        encodings[var] = {"dtype": "float32", "zlib": True, "complevel": 5}
 
-    ds.to_netcdf(args.output_path, encoding=encoding)
+    ds.to_netcdf(args.output_path, encoding=encodings)
 
 if __name__ == '__main__':
     main()
