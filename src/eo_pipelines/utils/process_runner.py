@@ -68,7 +68,7 @@ class ProcessRunner:
 
     def run(self):
         if self.log_path:
-            self.log_file = open(self.log_path,"w")
+            self.log_file = open(self.log_path,"a")
         if self.timeout > 0:
             self.monitor = ProcessMonitor(timeout=self.timeout,runner=self)
             self.monitor.start()

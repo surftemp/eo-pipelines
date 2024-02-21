@@ -25,6 +25,9 @@ import enum
 from .local_executor import LocalExecutor
 from .slurm_executor import SlurmExecutor, available as slurm_available
 from ..pipeline_exceptions import PipelineExecutorException
+from .tracking_database import TrackingDatabase
+
+tracking_databases = {}
 
 class ExecutorType(enum.Enum):
 
@@ -58,8 +61,15 @@ class ExecutorFactory:
         pass
 
     def create_executor(self,executor_type,environment,executor_settings):
+        tracking_path = environment.get("tracking_database_path",None)
+        tracking_database=TrackingDatabase()
+        if tracking_path:
+            if tracking_path not in tracking_databases:
+                tracking_databases[tracking_path] = TrackingDatabase(tracking_path)
+            tracking_database = tracking_databases[tracking_path]
+
         if executor_type == ExecutorType.Local:
-            return LocalExecutor(environment, executor_settings)
+            return LocalExecutor(environment, executor_settings, tracking_database)
         elif executor_type == ExecutorType.Slurm:
             if not slurm_available:
                 raise PipelineExecutorException("SLURM executor not available - check pyjob is installed")
