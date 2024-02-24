@@ -36,11 +36,6 @@ class LandsatAlign:
 
     def run(self, slice_size=None, check_alignment=False):
 
-        max_eshift = None
-        max_eshift_filename = None
-
-        ref_ds = None
-        ref_filename = None
 
         if self.output_folder is not None:
             os.makedirs(self.output_folder,exist_ok=True)
@@ -64,64 +59,64 @@ class LandsatAlign:
             raise ValueError(f"No input files found to process in {input_folder}")
 
         self.logger.info(f"Found {len(scenes)} input files")
-        # find the "most westerly shifted" file
-        min_lon = None
-        for f in scenes:
-            try:
-                ds = datasets[f]
-                ml = float(ds.lon.min())
-                if min_lon is None or  ml < min_lon:
-                    ref_ds = ds
-                    min_lon = ml
-                    ref_filename = f
-            except:
-                del datasets[f]
-                self.logger.exception(f"Error processing input file: {f}")
 
-        self.logger.info(f"Selecting {ref_filename} as the most westerly reference scene")
+        ref_ds = datasets[scenes[1]]
+        ref_filename = scenes[1]
+
+        self.logger.info(f"Selecting {ref_filename} as the reference scene")
         self.logger.info(f"Aligning scenes...")
 
-        # now work out the output width and final shifts
-        eshifts = {}
-        sshifts = {}
-        output_width = None
-        output_height = None
+        wshifts = {}
+        nshifts = {}
+
+        heights = {}
+        widths = {}
+
         for f in scenes:
             if f in datasets:
                 try:
                     ds = datasets[f]
                     (height,width) = ds.lon.shape
-                    # work out how many pixels to shift this dataset to the "east"
+                    heights[f] = height
+                    widths[f] = width
+                    self.logger.info(f"Calculating shift for {f}...")
+                    # work out how many pixels to shift this dataset to the "west"
                     (nshift,wshift) = self.find_shift(ref_ds,ds) if f != ref_filename else (0,0)
 
                     if wshift is None:
                         self.logger.warning(f"Unable to align {f}, skipping")
                         continue
+                    else:
+                        self.logger.info(f"Shift for {f} is ({nshift},{wshift})")
 
-                    eshift = -wshift
-                    sshift = -nshift
-                    eshifts[f] = eshift
-                    sshifts[f] = sshift
-                    assert(eshift >= 0) # sanity checking
+                    wshifts[f] = wshift
+                    nshifts[f] = nshift
+                except Exception as ex:
+                    print(ex)
 
-                    if max_eshift is None or eshift > max_eshift:
-                        max_eshift = eshift
-                        max_eshift_filename = f
+        min_wshift = min(wshifts.values())
+        min_nshift = min(nshifts.values())
 
-                    self.logger.info(f"Aligned {f} with east-shift={eshift}, south-shift={sshift}")
+        # make shifts relative to a SE "origin"
+        for f in wshifts:
+            wshifts[f] = wshifts[f] - min_wshift
+            nshifts[f] = nshifts[f] - min_nshift
 
-                    # if shifted further north wrt ref, reduce usable height
-                    if sshift < 0:
-                        height -= -sshift
+        se_intersection_wshift = max(wshifts.values())
+        se_intersection_nshift = max(nshifts.values())
 
-                    if output_width is None or eshift+width > output_width:
-                        output_width = eshift+width
-                    if output_height is None or height < output_height:
-                        output_height = height
-                except:
-                    del datasets[f]
-                    self.logger.exception(f"Error processing input file: {f}")
+        # calculate the shifts to the nw corners
+        nw_wshifts = {}
+        nw_nshifts = {}
+        for f in wshifts:
+            nw_wshifts[f] = wshifts[f] + widths[f]
+            nw_nshifts[f] = nshifts[f] + heights[f]
 
+        nw_intersection_wshift = min(nw_wshifts.values())
+        nw_intersection_nshift = min(nw_nshifts.values())
+
+        output_width = nw_intersection_wshift - se_intersection_wshift
+        output_height = nw_intersection_nshift - se_intersection_nshift
 
         self.logger.info(f"Output dimensions height: {output_height}, width: {output_width}")
 
@@ -131,23 +126,13 @@ class LandsatAlign:
         output_lats[:,:] = np.nan
         output_lons[:,:] = np.nan
 
-        for f in [ref_filename,max_eshift_filename]:
-            if f in datasets:
-                try:
-                    ds = datasets[f]
-                    height = ds.lon.shape[0]
-                    width = ds.lon.shape[1]
-                    eshift = eshifts[f]
-                    sshift = sshifts[f]
-                    dst_start_y = sshift if sshift > 0 else 0
-                    src_start_y = -sshift if sshift < 0 else 0
-                    copy_height = min(output_height-dst_start_y,height-src_start_y)
+        ds = datasets[ref_filename]
 
-                    output_lons[dst_start_y:dst_start_y+copy_height,eshift:eshift+width] = ds.lon.data[src_start_y:src_start_y+copy_height,:]
-                    output_lats[dst_start_y:dst_start_y+copy_height,eshift:eshift+width] = ds.lat.data[src_start_y:src_start_y+copy_height,:]
-                except:
-                    del datasets[f]
-                    self.logger.exception(f"Error processing input file: {f}")
+        start_n = se_intersection_nshift - nshifts[ref_filename]
+        start_w = se_intersection_wshift - wshifts[ref_filename]
+
+        output_lons[:,:] = ds.lon.data[start_n:start_n+output_height,start_w:start_w+output_width]
+        output_lats[:,:] = ds.lat.data[start_n:start_n+output_height,start_w:start_w+output_width]
 
         # create the output datasets and aggregate
         if self.min_path:
@@ -161,22 +146,18 @@ class LandsatAlign:
                 try:
                     self.logger.info(f"Processing input file: {f}")
                     ds = datasets[f]
-                    (height,width) = ds.lon.shape
-                    eshift = eshifts[f]
-                    sshift = sshifts[f]
 
-                    dst_start_y = sshift if sshift > 0 else 0
-                    src_start_y = -sshift if sshift < 0 else 0
-                    copy_height = min(output_height - dst_start_y, height - src_start_y)
+                    start_n = se_intersection_nshift - nshifts[f]
+                    start_w = se_intersection_wshift - wshifts[f]
 
                     # sanity check lat/lon alignment
                     if check_alignment:
                         maxlondiff = np.max(np.abs(
-                            output_lons[dst_start_y:dst_start_y + copy_height, eshift:eshift + width] -
-                            ds.lon.data[src_start_y:src_start_y + copy_height,:]))
+                            output_lons -
+                            ds.lon.data[start_n:start_n+output_height,start_w:start_w+output_width]))
                         maxlatdiff = np.max(np.abs(
-                            output_lats[dst_start_y:dst_start_y + copy_height, eshift:eshift + width] -
-                            ds.lat.data[src_start_y:src_start_y + copy_height,:]))
+                            output_lats -
+                            ds.lat.data[start_n:start_n+output_height,start_w:start_w+output_width]))
                         if maxlondiff > 1e-7 or maxlatdiff > 1e-7:
                             raise Exception(f"Internal error: maxlondiff={maxlondiff},maxlatdiff={maxlatdiff}")
 
@@ -186,7 +167,7 @@ class LandsatAlign:
                         if v != "time" and v != "lat" and v != "lon":
                             arr = np.zeros(shape=(1,output_height,output_width),dtype=ds[v].dtype)
                             arr[0,:,:] = np.nan
-                            arr[0,dst_start_y:dst_start_y+copy_height,eshift:eshift+width] = ds[v].data[0,src_start_y:src_start_y+copy_height,:]
+                            arr[0,:,:] = ds[v].data[0,start_n:start_n+output_height,start_w:start_w+output_width]
                             output_arrays[v] = arr
 
                             if min_arrays is not None:
@@ -231,8 +212,8 @@ class LandsatAlign:
         # return how many pixels other_ds should be shifted "to the west" and "to the north" to align with ref_ds
         # returning (north_shift,west_shift)
         # or None if no shift was found within the max_shift
-        for (max_shift,shift_step) in [(600,5),(200,1)]:
-            for xshift in range(0,max_shift+1,shift_step):
+        for (max_shift, shift_step) in [(50,10),(600,5),(200,1)]:
+            for xshift in range(-max_shift,max_shift+1,shift_step):
                 # x-axis runs approx from west to east
                 ref_idx_x = 0
                 other_idx_x = 0
@@ -250,7 +231,7 @@ class LandsatAlign:
                         ref_idx_y = yshift  # shift other "south"
                     if float(ref_ds.lat[ref_idx_y,ref_idx_x]) == float(other_ds.lat[other_idx_y,other_idx_x]) \
                        and float(ref_ds.lon[ref_idx_y,ref_idx_x]) == float(other_ds.lon[other_idx_y,other_idx_x]):
-                       return (-yshift,-xshift)
+                       return (yshift,xshift)
 
         # no shift found...
         return (None,None)
