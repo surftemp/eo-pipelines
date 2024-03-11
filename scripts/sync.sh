@@ -16,7 +16,7 @@ else
   rsync -avr $rootfolder/setup.cfg $username@login2.jasmin.ac.uk:$destfolder/eo-pipelines
   rsync -avr $rootfolder/MANIFEST.in $username@login2.jasmin.ac.uk:$destfolder/eo-pipelines
 
-  for environment in cartopy pyproj xesmf
+  for environment in cartopy pyproj xesmf rioxarray
   do
       echo syncing $environment
       rsync -avr --delete --exclude "*/__pycache__" $rootfolder/environments/$environment $username@login2.jasmin.ac.uk:$destfolder

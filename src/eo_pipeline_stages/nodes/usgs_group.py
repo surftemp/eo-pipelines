@@ -33,8 +33,12 @@ class Group(PipelineStage):
 
     def __init__(self, node_services):
         super().__init__(node_services, "group")
-        self.output_path = self.get_configuration()\
-            .get("output_path", self.get_working_directory())
+        self.output_path = self.get_configuration().get("output_path", None)
+        if self.output_path is None:
+            self.output_path = self.get_working_directory()
+        else:
+            if not os.path.isabs(self.output_path):
+                self.output_path = os.path.join(self.get_working_directory(), self.output_path)
         self.get_logger().info("eo_pipeline_stages.Group %s" % Group.VERSION)
 
     def get_parameters(self):

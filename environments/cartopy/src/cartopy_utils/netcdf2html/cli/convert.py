@@ -195,8 +195,7 @@ class Convert:
         initial_zoom = 768 / image_width
         if initial_zoom < 1:
             initial_zoom = 1
-        elif initial_zoom > 16:
-            initial_zoom = 16
+        max_zoom = 2048 / image_width
 
         root = builder.body().add_element("div")
         header_div = root.add_element("div")
@@ -207,7 +206,7 @@ class Convert:
 
         header.add_element("span", {"class": "spacer"}).add_text("|")
         header.add_element("label",{"for":"zoom_control"}).add_text("Zoom")
-        header.add_element("input", {"type": "range", "id": "zoom_control", "min": 1, "max": 20, "step": 1,
+        header.add_element("input", {"type": "range", "id": "zoom_control", "min": 1, "max": int(max_zoom), "step": 1,
                                          "value": initial_zoom})
 
         header.add_element("span",{"class":"spacer"}).add_text("|")

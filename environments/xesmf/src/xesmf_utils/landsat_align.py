@@ -28,14 +28,14 @@ import argparse
 
 class LandsatAlign:
 
-    def __init__(self, input_folder, output_folder, min_path=None):
+    def __init__(self, input_folder, output_folder, min_path=None, max_path=None):
         self.input_folder = input_folder
         self.output_folder = output_folder
         self.min_path = min_path
+        self.max_path = max_path
         self.logger = logging.getLogger("LandsatAlign")
 
     def run(self, slice_size=None, check_alignment=False):
-
 
         if self.output_folder is not None:
             os.makedirs(self.output_folder,exist_ok=True)
@@ -140,6 +140,11 @@ class LandsatAlign:
         else:
             min_arrays = None
 
+        if self.max_path:
+            max_arrays = { "lat": output_lats, "lon": output_lons }
+        else:
+            max_arrays = None
+
         processed_count = 0
         for f in scenes:
             if f in datasets:
@@ -176,6 +181,12 @@ class LandsatAlign:
                                 else:
                                     min_arrays[v] = np.nanmin(np.stack([arr,min_arrays[v]]),axis=0)
 
+                            if max_arrays is not None:
+                                if v not in max_arrays:
+                                    max_arrays[v] = arr
+                                else:
+                                    max_arrays[v] = np.nanmax(np.stack([arr,max_arrays[v]]),axis=0)
+
                     if self.output_folder:
                         output_path = os.path.join(self.output_folder, f)
                         self.logger.info(f"Creating output file: {output_path}")
@@ -193,6 +204,10 @@ class LandsatAlign:
         if self.min_path:
             self.logger.info(f"Creating output file: {self.min_path}")
             self.create_output_dataset(self.min_path, ref_ds, min_arrays)
+
+        if self.max_path:
+            self.logger.info(f"Creating output file: {self.max_path}")
+            self.create_output_dataset(self.max_path, ref_ds, max_arrays)
 
         processed_pct = int(100*processed_count/len(scenes))
 
@@ -212,7 +227,7 @@ class LandsatAlign:
         # return how many pixels other_ds should be shifted "to the west" and "to the north" to align with ref_ds
         # returning (north_shift,west_shift)
         # or None if no shift was found within the max_shift
-        for (max_shift, shift_step) in [(50,10),(600,5),(200,1)]:
+        for (max_shift, shift_step) in [(50,10),(600,5),(100,1)]:
             for xshift in range(-max_shift,max_shift+1,shift_step):
                 # x-axis runs approx from west to east
                 ref_idx_x = 0
@@ -243,6 +258,7 @@ if __name__ == '__main__':
     parser.add_argument("input_folder")
     parser.add_argument("--output-folder",help="Output aligned versions of input files to this folder", default=None)
     parser.add_argument("--output-min-path",help="Aggregate minimum values and output to this path",default=None)
+    parser.add_argument("--output-max-path", help="Aggregate maximum values and output to this path", default=None)
     parser.add_argument("--slice", type=int, help="Work with a NE corner slice of the data of this size, useful for testing", default=None)
     parser.add_argument("--check", action="store_true", help="Double check alignment")
 
@@ -253,6 +269,6 @@ if __name__ == '__main__':
     input_folder = args.input_folder
     output_folder = args.output_folder
 
-    aligner = LandsatAlign(input_folder,output_folder,min_path=args.output_min_path)
+    aligner = LandsatAlign(input_folder,output_folder,min_path=args.output_min_path,max_path=args.output_max_path)
     aligner.run(slice_size=args.slice,check_alignment=args.check)
 
