@@ -145,6 +145,7 @@ class LocalExecutor(Executor):
                 task_id = "task-"+uuid.uuid4().hex
                 self.submitted_count += 1
                 self.task_ids.append(task_id)
+            self.tracking_database.track_task_queued(stage_id, task_id, try_nr)
             self.pending_queue.put((stage_id,task_id,script,env, working_dir))
             self.task_descriptions[task_id] = (stage_id, script, env, working_dir, description, try_nr)
             return task_id
