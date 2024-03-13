@@ -140,7 +140,7 @@ class PipelineStage:
         if self.__tracking_path:
             os.remove(self.__tracking_path)
 
-    def execute(self,inputs):
+    async def execute(self,inputs):
         start_time = time.time()
         can_skip = self.__executor_settings.get("can_skip", False)
         results_path = os.path.join(self.__working_directory,"results.json")

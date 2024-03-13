@@ -75,6 +75,15 @@ class USGS_Search(PipelineStage):
             "PATH_FILTER": path_filter
         }
 
+    def get_filter_parameters(self):
+        min_overlap_fraction = self.get_configuration().get("min_overlap_fraction", 0.5)
+        return {
+            "LAT_MIN": format_float(self.get_spec().get_lat_min()),
+            "LAT_MAX": format_float(self.get_spec().get_lat_max()),
+            "LON_MIN": format_float(self.get_spec().get_lon_min()),
+            "LON_MAX": format_float(self.get_spec().get_lon_max()),
+            "MIN_OVERLAP_FRACTION": format_float(min_overlap_fraction)
+        }
 
     def execute_stage(self,inputs):
 
@@ -131,6 +140,20 @@ class USGS_Search(PipelineStage):
                     self.get_logger().error(
                         "Failed to get list of scenes for dataset: %s" % dataset)
                     continue
+
+                min_overlap_filter = self.get_configuration().get("min_overlap_fraction", None)
+                if min_overlap_filter is not None:
+                    filter_env = self.get_filter_parameters()
+                    filter_env["SCENES_CSV_PATH"] = scenes_csv_path
+                    filter_script = os.path.join(os.path.split(__file__)[0], "usgs_filter.sh")
+                    filter_task_id = executor.queue_task(self.get_stage_id(), filter_script, filter_env,
+                                                       self.get_working_directory())
+                    executor.wait_for_tasks()
+                    if not executor.get_task_result(filter_task_id):
+                        self.get_logger().error(
+                            "Failed to get list of scenes for dataset: %s" % dataset)
+                        continue
+
                 executor.clear()
 
         scene_list = {}

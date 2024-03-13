@@ -62,10 +62,10 @@ class ExecutorFactory:
 
     def create_executor(self,executor_type,environment,executor_settings):
         tracking_path = environment.get("tracking_database_path",None)
-        tracking_database=TrackingDatabase()
+        tracking_database = None
         if tracking_path:
             if tracking_path not in tracking_databases:
-                tracking_databases[tracking_path] = TrackingDatabase(tracking_path)
+                tracking_databases[tracking_path] = TrackingDatabase(tracking_path, run_id=environment.get("run_id","?"))
             tracking_database = tracking_databases[tracking_path]
 
         if executor_type == ExecutorType.Local:
@@ -73,7 +73,7 @@ class ExecutorFactory:
         elif executor_type == ExecutorType.Slurm:
             if not slurm_available:
                 raise PipelineExecutorException("SLURM executor not available - check pyjob is installed")
-            return SlurmExecutor(environment, executor_settings)
+            return SlurmExecutor(environment, executor_settings, tracking_database)
         else:
             raise PipelineExecutorException("Unknown executor_type")
 

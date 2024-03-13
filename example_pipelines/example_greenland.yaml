@@ -15,6 +15,7 @@ configuration:
         LANDSAT_OT_C2_L2:
           bands: [ ST,ST_QA ]
     environment:
+      run_id: example_greenland
       working_directory: /gws/nopw/j04/lake_icesheet/pipeline_test
       conda_path: /home/users/niallmcc/miniconda3/bin/conda
       shell: "/bin/bash"
@@ -23,9 +24,6 @@ configuration:
 nodes:
   n0:
     type: eo_pipelines:usgs_search
-    properties:
-      configuration:
-        output_path: /gws/nopw/j04/lake_icesheet/pipeline_test/list
   n1:
     type: eo_pipelines:usgs_fetch
     properties:
@@ -35,11 +33,11 @@ nodes:
     type: eo_pipelines:usgs_import
     properties:
       configuration:
-        executor_settings:
-          executor: local
-          local:
-            nr_threads: 4
         output_path: /gws/nopw/j04/lake_icesheet/pipeline_test/imported
+      executor_settings:
+        executor: local
+        local:
+          nr_threads: 4
   n3:
     type: eo_pipelines:usgs_group
     properties:

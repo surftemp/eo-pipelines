@@ -20,36 +20,27 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import argparse
-import logging
+from eo_pipelines.executors.tracking_database import TrackingDatabase
 
-from hyrrokkin.api.topology import Topology
-from hyrrokkin.utils.yaml_importer import import_from_yaml
-import uuid
-import os
-
-schema_path = "eo_pipeline_stages"
-
-class EOPipelineRunner:
-
-    def __init__(self):
-        pass
-
-    def run(self, yaml_path):
-        t = Topology(os.getcwd(),[schema_path])
-        with open(yaml_path) as f:
-            import_from_yaml(t, f)
-        t.run()
-
+def dump(rowlist):
+    for row in rowlist:
+        print(row)
 
 def main():
-    logging.basicConfig(level=logging.INFO)
+    import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument("yaml_path")
-    args = parser.parse_args()
-    runner = EOPipelineRunner()
-    runner.run(args.yaml_path)
+    parser.add_argument("database_path",help="Path to the tracking database")
+    parser.add_argument("--list-runs",action="store_true",help="List the runs in the database")
+    parser.add_argument("--list-tasks", action="store_true", help="List the tasks in the database")
+    parser.add_argument("--run-id", help="Filter tasks/stages by run", default=None)
+    parser.add_argument("--stage-id", help="Filter tasks/stages by stage", default=None)
 
+    args = parser.parse_args()
+    db = TrackingDatabase(args.database_path)
+    if args.list_runs:
+        dump(db.list_runs())
+    if args.list_tasks:
+        dump(db.list_tasks(args.run_id, args.stage_id))
 
 if __name__ == '__main__':
     main()

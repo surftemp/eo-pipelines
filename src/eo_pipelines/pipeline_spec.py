@@ -21,7 +21,7 @@
 # SOFTWARE.
 
 import re
-
+import datetime
 from .pipeline_exceptions import PipelineSetupException
 
 class PipelineSpec:
@@ -66,7 +66,11 @@ class PipelineSpec:
 
             # already converted to datetime.date if present
             self.start_date = spec.get("start_date",None)
+            if self.start_date is not None:
+                self.start_date = datetime.datetime.strptime(self.start_date,"%Y-%m-%d").date()
             self.end_date = spec.get("end_date",None)
+            if self.end_date is not None:
+                self.end_date = datetime.datetime.strptime(self.end_date,"%Y-%m-%d").date()
 
             self.bands_for_dataset = {}
             self.datasets = []

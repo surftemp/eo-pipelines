@@ -1,54 +1,118 @@
 
 import argparse
-import json
-import csv
+import os
+import zipfile
+import logging
+
+import shapely
+import shapely.geometry as sgeom
 
 class WRSSearch:
 
-    def __init__(self, wrs_geojson_path, csv_path):
-        self.cells = set() # (row,path) to shapely geometry
-        self.wrs_geojson_path = wrs_geojson_path
-        with open(csv_path) as f:
-            rdr = csv.reader(f)
-            cols = {}
-            for line in rdr:
-                if len(cols) == 0:
-                    for idx in range(len(line)):
-                        cols[line[idx]] = idx
+    def __init__(self, max_overlap_fraction):
+        self.logger = logging.getLogger("WRSSearch")
+        folder = os.path.split(__file__)[0]
+        path = os.path.join(folder,"WRS_descending.csv.zip")
+        self.areas = {}
+        self.max_overlap_fraction = max_overlap_fraction
+        with open(path,"rb") as f:
+            zf = zipfile.ZipFile(f)
+            filename = zf.namelist()[0]
+            f = zf.open(filename)
+            content = f.read().decode("utf-8").split("\n")
+
+            headers = {}
+            for line in content:
+                items = line.split(",")
+                if len(items) <= 1:
+                    continue
+                if not headers:
+                    for idx in range(len(items)):
+                        headers[items[idx]] = idx
                 else:
-                    row = int(line[cols["row"]])
-                    path = int(line[cols["path"]])
-                    self.cells.add((row,path))
+                    row = int(items[headers["ROW"]])
+                    path = int(items[headers["PATH"]])
+                    coords = items[headers["COORDS"]].split(":")
+                    coords = list(map(lambda c: (float(c.split(";")[0]),float(c.split(";")[1])),coords))
+                    poly = sgeom.Polygon(coords)
+                    self.areas[(row,path)] = poly
 
-    def run(self):
+        self.paths = {}
+        for (row,path) in self.areas:
+            if path not in self.paths:
+                self.paths[path] = []
+            self.paths[path].append(self.areas[(row,path)])
 
-        results = []
-        with open(self.wrs_geojson_path) as f:
-            o = json.loads(f.read())
-            filtered_features = []
-            for f in o["features"]:
-                p = f["properties"]
-                path = int(p["PATH"])
-                row = int(p["ROW"])
+        for path in self.paths:
+            self.paths[path] = shapely.union_all(self.paths[path])
 
-                if (row,path) in self.cells:
-                    filtered_features.append(f)
+    def scene_matches(self, search_poly, min_overlap_fraction=0):
+        search_area = search_poly.area
+        matches = []
+        for (row,path) in self.areas:
+            test_area = self.areas[(row,path)]
+            if (test_area.intersects(search_poly)):
+                intersection = test_area.intersection(search_poly)
+                overlap_fraction = intersection.area / search_area
+                if overlap_fraction >= min_overlap_fraction:
+                    matches.append((row,path))
+        return matches
 
-            o["features"] = filtered_features
-        return o
+    def path_matches(self, search_poly):
+        search_area = search_poly.area
+        matches = []
+        for path in self.paths:
+            test_area = self.paths[path]
+            if (test_area.intersects(search_poly)):
+                intersection = test_area.intersection(search_poly)
+                overlap_fraction = intersection.area / search_area
+                print(overlap_fraction)
+                if overlap_fraction >= self.max_overlap_fraction:
+                    matches.append(path)
+        return matches
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("--wrs-path", help="Path to geojson file containing WRS definitions",
-                        default="wrs2.geojson")
-    parser.add_argument("--csv-path", help="Path read to export row/path values",
-                        default="row_paths.csv")
-    parser.add_argument("--export-geojson-path", help="Path to csv to export row/path values",
-                        default="subset.geojson")
-
+    parser.add_argument("csv_path", help="Path to CSV file containing landsat scene identifiers")
+    parser.add_argument("--min-overlap-fraction", type=float, help="min overlap with the bounding box", required=True)
+    parser.add_argument("--lat-min", type=float, help="minimum latitude, decimal degrees", required=True)
+    parser.add_argument("--lat-max", type=float, help="maximum latitude, decimal degrees", required=True)
+    parser.add_argument("--lon-min", type=float, help="minimum longitude, decimal degrees", required=True)
+    parser.add_argument("--lon-max", type=float, help="maximum longitude, decimal degrees", required=True)
     args = parser.parse_args()
-    search = WRSSearch(args.wrs_path,args.csv_path)
 
-    filtered_geojson = search.run()
-    with open(args.export_geojson_path,"w") as f:
-        f.write(json.dumps(filtered_geojson))
+    search_area = sgeom.Polygon([[args.lon_min,args.lat_min],[args.lon_max,args.lat_min],[args.lon_max,args.lat_max],
+                                 [args.lon_min,args.lat_max],[args.lon_min,args.lat_min]])
+
+    search = WRSSearch(args.min_overlap_fraction)
+
+    # work out which paths have sufficient overlap with the search area
+    path_matches = search.path_matches(search_area)
+
+    # collect all the intersecting scenes
+    row_paths = search.scene_matches(search_area)
+
+    # the results are all intersecting scenes which belong to one of the paths
+    row_path_matches = set((row,path) for (row,path) in row_paths if path in path_matches)
+
+    # now filter the CSV
+    filtered_lines = []
+    input_count = 0
+    with open(args.csv_path) as f:
+        for line in f.readlines():
+            input_count += 1
+            items = line.split(",")
+            scene_id = items[2].strip()
+            # extract the ROW and PATH from the filename
+            # https://gisgeography.com/landsat-file-naming-convention/
+            # LC80220032014163LGN01
+            path = int(scene_id[3:6])
+            row = int(scene_id[6:9])
+            if (row,path) in row_path_matches:
+                filtered_lines.append(line)
+
+    with open(args.csv_path,"w") as of:
+        for line in filtered_lines:
+            of.write(line)
+
+    print(f"Filtered {len(filtered_lines)/input_count}")

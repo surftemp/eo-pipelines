@@ -61,7 +61,7 @@ def main():
     ran = 0
     for yaml_path in yaml_paths:
         if yaml_path not in pipelines_progress:
-            runner = EOPipelineRunner()
+            runner = EOPipelineRunner(run_id=yaml_path)
             folder,yaml_filename = os.path.split(yaml_path)
             os.chdir(folder)
             print(f"running pipeline: {yaml_path} in folder {folder}")
