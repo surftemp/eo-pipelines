@@ -21,6 +21,7 @@
 # SOFTWARE.
 
 import enum
+import os.path
 
 from .local_executor import LocalExecutor
 from .slurm_executor import SlurmExecutor, available as slurm_available
@@ -62,8 +63,11 @@ class ExecutorFactory:
 
     def create_executor(self,executor_type,environment,executor_settings):
         tracking_path = environment.get("tracking_database_path",None)
+
         tracking_database = None
         if tracking_path:
+            if not os.path.isabs(tracking_path):
+                tracking_path = os.path.abspath(tracking_path)
             if tracking_path not in tracking_databases:
                 tracking_databases[tracking_path] = TrackingDatabase(tracking_path, run_id=environment.get("run_id","?"))
             tracking_database = tracking_databases[tracking_path]

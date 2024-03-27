@@ -28,7 +28,6 @@ import uuid
 
 from .executor import Executor
 from ..pipeline_utils import PipelineUtils
-from .tracking_database import TrackingDatabase
 
 available = False
 try:
@@ -50,7 +49,7 @@ default_jobopts = {
 
 class SlurmExecutor(Executor):
 
-    def __init__(self, environment, stage_configuration={},tracking_database=TrackingDatabase()):
+    def __init__(self, environment, stage_configuration={},tracking_database=None):
         self.logger = logging.getLogger("SlurmExecutor")
         self.environment = environment
         self.stage_configuration = stage_configuration
@@ -89,7 +88,8 @@ class SlurmExecutor(Executor):
             job_id = pyjob.cluster.submit(job)
             self.jobs[task_id] = (job_id, job, working_dir)
             self.task_descriptions[task_id] = (stage_id, script, env, working_dir, description, try_nr)
-            self.tracking_database.track_task_queued(stage_id, task_id, try_nr)
+            if self.tracking_database:
+                self.tracking_database.track_task_queued(stage_id, task_id, try_nr)
             return task_id
         finally:
             os.chdir(curdir)
@@ -109,7 +109,8 @@ class SlurmExecutor(Executor):
         else:
             message = "FAILED"
             ret = -1
-        self.tracking_database.track_task_end(stage_id, task_id, try_nr, ret, message)
+        if self.tracking_database:
+            self.tracking_database.track_task_end(stage_id, task_id, try_nr, ret, message)
         retrying = False
         if succeeded:
             self.task_ids.remove(task_id)
@@ -138,7 +139,8 @@ class SlurmExecutor(Executor):
             if job.host and not job_id in self.job_hosts:
                 self.job_hosts[job_id] = job.host
                 (stage_id, script, env, working_dir, description, try_nr) = self.task_descriptions[task_id]
-                self.tracking_database.track_task_start(stage_id, task_id, try_nr)
+                if self.tracking_database:
+                    self.tracking_database.track_task_start(stage_id, task_id, try_nr)
             if job.result != 'UNKNOWN':
                 succeeded = job.done
                 return succeeded

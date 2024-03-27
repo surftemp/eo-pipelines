@@ -35,11 +35,17 @@ class LandsatAlign(PipelineStage):
         self.node_services = node_services
 
         self.output_min_path = self.get_configuration().get("output_min_path", "")
+        self.output_max_path = self.get_configuration().get("output_max_path", "")
         self.output_folder = self.get_configuration().get("output_folder", "")
 
         if self.output_min_path:
             if not os.path.isabs(self.output_min_path):
                 self.output_min_path = os.path.join(self.get_working_directory(),self.output_min_path)
+
+        if self.output_max_path:
+            if not os.path.isabs(self.output_max_path):
+                self.output_max_path = os.path.join(self.get_working_directory(),self.output_max_path)
+
         if self.output_folder:
             if not os.path.isabs(self.output_folder):
                 self.output_folder = os.path.join(self.get_working_directory(),self.output_folder)
@@ -53,6 +59,10 @@ class LandsatAlign(PipelineStage):
 
         if self.output_min_path:
             params["OUTPUT_MIN_PATH"] = "--output-min-path "+self.output_min_path
+
+        if self.output_max_path:
+            params["OUTPUT_MAX_PATH"] = "--output-max-path "+self.output_max_path
+
         return params
 
     def execute_stage(self, inputs):

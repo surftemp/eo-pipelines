@@ -112,11 +112,13 @@ class Fetch(PipelineStage):
 
         limit = self.get_configuration().get("limit",None)
 
+        no_download = self.get_configuration().get("no_download", False)
+
         file_cache_index = self.get_configuration().get("file_cache_index","")
         if file_cache_index != "":
             file_cache_index = "--file-cache-index "+file_cache_index
 
-        if not usgs_password or not usgs_username:
+        if not no_download and (not usgs_password or not usgs_username):
             raise Exception("Please set environment variables USGS_USERNAME and USGS_PASSWORD")
 
         output_folders = {}
@@ -168,7 +170,8 @@ class Fetch(PipelineStage):
                             "SUFFIXES": " ".join(suffixes),
                             "OUTPUT_FOLDER": dataset_output_folder,
                             "DOWNLOAD_FOLDER": dataset_download_folder,
-                            "FILE_CACHE_INDEX": file_cache_index
+                            "FILE_CACHE_INDEX": file_cache_index,
+                            "NO_DOWNLOAD": "--no-download" if no_download else ""
                     }
 
                     fetch_script = os.path.join(os.path.split(__file__)[0], "usgs_fetch.sh")

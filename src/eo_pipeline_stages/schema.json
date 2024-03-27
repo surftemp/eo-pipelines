@@ -11,6 +11,13 @@
         "classname": "configuration.Configuration"
     },
     "node_types": {
+        "sleep": {
+            "metadata": {
+                "name": "Sleep",
+                "description": "Test stage that just... sleeps"
+            },
+            "classname": "nodes.sleep.Sleep"
+        },
         "usgs_search": {
             "metadata": {
                 "name": "USGS Search",

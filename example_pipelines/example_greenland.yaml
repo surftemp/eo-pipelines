@@ -1,6 +1,5 @@
 configuration:
   eo_pipelines:
-
     spec:
       lat_min: "72.35.56N"
       lat_max: "64.44.52N"

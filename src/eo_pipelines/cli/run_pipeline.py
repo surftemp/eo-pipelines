@@ -25,8 +25,7 @@ import logging
 
 from hyrrokkin.api.topology import Topology
 from hyrrokkin.utils.yaml_importer import import_from_yaml
-import uuid
-import os
+import tempfile
 
 schema_path = "eo_pipeline_stages"
 
@@ -36,10 +35,11 @@ class EOPipelineRunner:
         pass
 
     def run(self, yaml_path):
-        t = Topology(os.getcwd(),[schema_path])
-        with open(yaml_path) as f:
-            import_from_yaml(t, f)
-        t.run()
+        with tempfile.TemporaryDirectory() as tmpdirname:
+            t = Topology(tmpdirname,[schema_path])
+            with open(yaml_path) as f:
+                import_from_yaml(t, f)
+            t.run()
 
 
 def main():

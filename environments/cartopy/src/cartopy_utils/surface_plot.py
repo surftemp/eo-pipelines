@@ -7,12 +7,10 @@ import matplotlib.pyplot as plt
 # ds = ds.sel(lat=slice(77,76),lon=slice(-55,-54))
 # ds.to_netcdf("dem_900m_N76W055.nc")
 
-input_path = "/home/dev/Downloads/ASTGTMV003_N76W055_dem.nc"
-input_path_900m = "/home/dev/Downloads/dem_900m_N76W055.nc"
+input_path = "/home/dev/Downloads/ASTGTMV003_N76W055_dem_smoothed1.nc"
+
 
 ds = xarray.open_dataset(input_path)
-ds_900m = xarray.open_dataset(input_path_900m)
-print(ds_900m)
 
 # ds_900m["dem"].plot.surface()
 
@@ -39,9 +37,9 @@ amax = da.argmax(["lat","lon"])
 latmax = int(amax["lat"])
 lonmax = int(amax["lon"])
 
-area = da.isel(lat=slice(latmax-100,latmax+100),lon=slice(lonmax-100,lonmax+100))
-v = da.isel(lat=latmax,lon=lonmax).data
+area = da.sel(lat=slice(76.6,76.4),lon=slice(-54.9,-54.7))
+
 area.plot.surface()
-print(v)
+
 # smoothed_da = da.rolling(lat=30,lon=30).mean()
 plt.show()

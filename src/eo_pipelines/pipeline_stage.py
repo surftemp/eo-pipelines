@@ -50,6 +50,10 @@ class PipelineStage:
             self.__default_executor_type = ExecutorType.Local
         self.__working_directory = self.__configuration.get("working_directory",
                                          os.path.join(self.__environment.get("working_directory","/tmp"), self.__stage_id))
+
+        if not os.path.isabs(self.__working_directory):
+            self.__working_directory = os.path.abspath(self.__working_directory)
+
         os.makedirs(self.__working_directory, exist_ok=True)
 
         self.__logger = logging.getLogger(self.__stage_id)

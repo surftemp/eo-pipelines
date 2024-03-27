@@ -28,36 +28,34 @@ import logging
 
 class TrackingDatabase:
 
-    def __init__(self, path=None, run_id=None):
+    def __init__(self, path, run_id=None):
         self.logger = logging.getLogger("TrackingDatabase")
         self.path = path
         self.run_id = run_id
-        if path is not None:
-            create_schema = False
-            if not os.path.exists(path):
-                create_schema = True
 
-            with sqlite3.connect(path) as db:
+        create_schema = False
+        if not os.path.exists(path):
+            create_schema = True
 
-                if create_schema:
-                    curs = db.cursor()
-                    curs.execute("CREATE TABLE RUNS(RUN_ID STRING, START_TIME DATETIME, PRIMARY KEY (RUN_ID));")
-                    curs.execute("CREATE TABLE TASKS(RUN_ID STRING, STAGE_ID STRING, TASK_ID STRING, TRY_NR INTEGER, QUEUE_TIME DATETIME, START_TIME DATETIME, END_TIME DATETIME, RESULT INTEGER, MESSAGE STRING, PRIMARY KEY (RUN_ID, STAGE_ID, TASK_ID, TRY_NR));")
-                    db.commit()
+        with sqlite3.connect(path) as db:
 
-                if self.run_id is not None:
-                    # if any runs are recorded with the same ID, remove them
-                    curs = db.cursor()
-                    curs.execute("DELETE FROM RUNS WHERE RUN_ID = ?",[run_id])
-                    curs.execute("DELETE FROM TASKS WHERE RUN_ID = ?", [run_id])
-                    curs.execute("INSERT INTO RUNS(RUN_ID, START_TIME) VALUES(?,?)",[self.run_id,datetime.datetime.now()])
-                    db.commit()
+            if create_schema:
+                curs = db.cursor()
+                curs.execute("CREATE TABLE RUNS(RUN_ID STRING, START_TIME DATETIME, PRIMARY KEY (RUN_ID));")
+                curs.execute("CREATE TABLE TASKS(RUN_ID STRING, STAGE_ID STRING, TASK_ID STRING, TRY_NR INTEGER, QUEUE_TIME DATETIME, START_TIME DATETIME, END_TIME DATETIME, RESULT INTEGER, MESSAGE STRING, PRIMARY KEY (RUN_ID, STAGE_ID, TASK_ID, TRY_NR));")
+                db.commit()
 
-    def is_active(self):
-        return self.path is not None
+            if self.run_id is not None:
+                # if any runs are recorded with the same ID, remove them
+                curs = db.cursor()
+                curs.execute("DELETE FROM RUNS WHERE RUN_ID = ?",[run_id])
+                curs.execute("DELETE FROM TASKS WHERE RUN_ID = ?", [run_id])
+                curs.execute("INSERT INTO RUNS(RUN_ID, START_TIME) VALUES(?,?)",[self.run_id,datetime.datetime.now()])
+                db.commit()
+
 
     def track_task_queued(self, stage_id, task_id, try_nr):
-        if self.path and self.run_id:
+        if self.run_id:
             with sqlite3.connect(self.path) as db:
                 try:
                     curs = db.cursor()
@@ -69,7 +67,7 @@ class TrackingDatabase:
                     self.logger.exception("Tracking database update failed")
 
     def track_task_start(self, stage_id, task_id, try_nr):
-        if self.path and self.run_id:
+        if self.run_id:
             with sqlite3.connect(self.path) as db:
                 try:
                     curs = db.cursor()
@@ -79,7 +77,7 @@ class TrackingDatabase:
                     self.logger.exception("Tracking database update failed")
 
     def track_task_end(self, stage_id, task_id, try_nr, result, message=""):
-        if self.path and self.run_id:
+        if self.run_id:
             with sqlite3.connect(self.path) as db:
                 try:
                     curs = db.cursor()

@@ -29,7 +29,6 @@ import time
 import logging
 
 from .executor import Executor
-from .tracking_database import TrackingDatabase
 from ..utils.process_runner import ProcessRunner
 
 
@@ -91,7 +90,7 @@ class ExecutorThread(threading.Thread):
 
 class LocalExecutor(Executor):
 
-    def __init__(self, environment, stage_configuration={},tracking_database=TrackingDatabase()):
+    def __init__(self, environment, stage_configuration={},tracking_database=None):
         self.logger = logging.getLogger("LocalExecutor")
         self.shell = environment.get("shell", "/bin/bash")
         self.conda_path = environment.get("conda_path", "~/miniconda3/bin/conda")
@@ -130,11 +129,12 @@ class LocalExecutor(Executor):
         return self.pending_queue.get()
 
     def task_started(self,task_id):
-        if self.tracking_database.is_active():
+        if self.tracking_database:
             self.lock.acquire()
             try:
                 (stage_id, script, env, working_dir, description, try_nr) = self.task_descriptions[task_id]
-                self.tracking_database.track_task_start(stage_id,task_id,try_nr)
+                if self.tracking_database:
+                    self.tracking_database.track_task_start(stage_id,task_id,try_nr)
             finally:
                 self.lock.release()
 
@@ -145,7 +145,8 @@ class LocalExecutor(Executor):
                 task_id = "task-"+uuid.uuid4().hex
                 self.submitted_count += 1
                 self.task_ids.append(task_id)
-            self.tracking_database.track_task_queued(stage_id, task_id, try_nr)
+            if self.tracking_database:
+                self.tracking_database.track_task_queued(stage_id, task_id, try_nr)
             self.pending_queue.put((stage_id,task_id,script,env, working_dir))
             self.task_descriptions[task_id] = (stage_id, script, env, working_dir, description, try_nr)
             return task_id
@@ -164,7 +165,8 @@ class LocalExecutor(Executor):
                     message = "TIMEOUT"
                 else:
                     message = "FAILED"
-            self.tracking_database.track_task_end(stage_id, task_id, try_nr, ret, message)
+            if self.tracking_database:
+                self.tracking_database.track_task_end(stage_id, task_id, try_nr, ret, message)
             retrying = False
             if not succeeded:
                 if try_nr < self.retry_count:
