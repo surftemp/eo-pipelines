@@ -24,7 +24,8 @@ import csv
 import os
 import argparse
 
-if __name__ == '__main__':
+
+def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("template_path",help="path to file containing pipeline template")
     parser.add_argument("parameters_path", help="path to csv file containing parameters")
@@ -52,6 +53,7 @@ if __name__ == '__main__':
         rdr = csv.reader(f)
         cols = {}
         pid = 0
+
         for line in rdr:
             if len(cols) == 0:
                 for idx in range(len(line)):
@@ -84,3 +86,8 @@ if __name__ == '__main__':
                         v = line[cols[key]]
                         s = s.replace("{"+key+"}",v)
                     of.write(s)
+
+        print(f"Created {pid} pipelines under {args.output_folder}")
+
+if __name__ == '__main__':
+    main()

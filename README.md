@@ -36,8 +36,8 @@ configuration:
       lon_min: "54.46.05W"
       lon_max: "53.49.56W"
       # and the time range
-      start_date: 2021-06-01
-      end_date: 2021-08-31
+      start_date: "2021-06-01"
+      end_date: "2021-08-31"
       # filter out scenes thought to have more than 10% cloud cover
       max_cloud_cover_fraction: 0.1
       # specify the datasets of interest
@@ -47,7 +47,7 @@ configuration:
     # the environment describes how 
     environment:
       working_directory: /tmp/pipeline_test
-      conda_path: /home/users/niallmcc/miniconda3/bin/conda
+      conda_path: /home/users/myuser/miniconda3/bin/conda
       shell: "/bin/bash"
       echo_stdout: True
       tracking_database_path: /tmp/tracking.db # path to a database that is used to record task execution statistics
@@ -193,10 +193,12 @@ To run a set of pipelines (pipelines are executed in series):
 nohup run_pipelines "**/*.yaml" &
 ```
 
-A tool is provided for preparing a set of pipelines from a template and a CSV file containing parameters that will be substituted into the template
+## Creating a set of pipelines from a template
+
+A tool is provided for preparing a set of pipelines from a template and a CSV file containing parameter values that will be substituted into the template
 
 ```
-python -m eo_pipelines.utils.template_to_pipelines.py pipeline_template.yaml parameters.csv /tmp/pipelines
+create_pipelines pipeline_template.yaml parameters.csv /tmp/pipelines
 ```
 
 where pipeline_template.yaml is a pipeline with template parameters surrounded by curly brackets
@@ -216,7 +218,7 @@ nodes:
 ...
 ```
 
-and parameters.csv contains values to substitute:
+and parameters.csv contains values to substitute for each parameter:
 
 ```csv
 row,path

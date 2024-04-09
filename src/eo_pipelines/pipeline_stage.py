@@ -49,7 +49,7 @@ class PipelineStage:
         else:
             self.__default_executor_type = ExecutorType.Local
         self.__working_directory = self.__configuration.get("working_directory",
-                                         os.path.join(self.__environment.get("working_directory","/tmp"), self.__stage_id))
+                                         os.path.join(self.__environment.get("working_directory",os.getcwd()), self.__stage_id))
 
         if not os.path.isabs(self.__working_directory):
             self.__working_directory = os.path.abspath(self.__working_directory)
@@ -144,7 +144,7 @@ class PipelineStage:
         if self.__tracking_path:
             os.remove(self.__tracking_path)
 
-    async def execute(self,inputs):
+    async def run(self,inputs):
         start_time = time.time()
         can_skip = self.__executor_settings.get("can_skip", False)
         results_path = os.path.join(self.__working_directory,"results.json")
@@ -171,6 +171,7 @@ class PipelineStage:
         return result
 
     def execute_stage(self, inputs):
+        # must be implemented in a sub-class
         raise NotImplementedError()
 
     def get_parameters(self):
