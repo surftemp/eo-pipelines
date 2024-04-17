@@ -22,8 +22,6 @@ import xarray as xr
 import pyproj
 import os
 import numpy as np
-import sys
-import time
 
 available = False
 try:
@@ -41,8 +39,6 @@ slurm_defaults = {
     'queue': 'short-serial',
     'name': 'regrid'
 }
-
-from copy_metadata import copy_metadata_ds
 
 class MyRegridder:
 
@@ -63,12 +59,14 @@ class MyRegridder:
         transformer = pyproj.Transformer.from_crs(4326, 27700)
         eastings, northings = transformer.transform(lats, lons)
 
-        max_northing = np.nanmax(self.target_grid.y.data)+50
-        min_easting = np.nanmin(self.target_grid.x.data)-50
+        northings0 = float(self.target_grid.lat[0])
+        northingsN = float(self.target_grid.lat[-1])
+        eastings0 = float(self.target_grid.lon[0])
+        eastingsN = float(self.target_grid.lon[-1])
 
         # work out the indices on the target grid
-        indices_nj = np.int32(self.scale_factor*np.round((max_northing - northings)/100))
-        indices_ni = np.int32(self.scale_factor*np.round((eastings - min_easting)/100))
+        indices_nj = np.int32(self.scale_factor*np.round(nj * (northings - northings0) / (northingsN - northings0)))
+        indices_ni = np.int32(self.scale_factor*np.round(ni * (eastings - eastings0) / (eastingsN - eastings0)))
 
         # set indices to (nj,ni) for points that lie outside the target grid
         indices_nj = np.where(indices_nj < 0, self.scale_factor*nj, indices_nj)
@@ -128,6 +126,7 @@ if __name__ == '__main__':
                         default="/home/dev/20211122110514-NCEO-L1C-Landsat9-v2.0-fv01.0.nc")
     parser.add_argument("--target_grid_path", help="path to file defining grid lat/lon ontop which data is to be regridded",
                         default="/home/dev/severn.nc")
+
     parser.add_argument("--output_folder", help="path to the output folder into which regridded files are be written",
                         default=".")
     parser.add_argument("--limit", type=int, help="process only this many scenes (for testing)")

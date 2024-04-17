@@ -33,5 +33,6 @@ args = parser.parse_args()
 
 raster = rioxarray.open_rasterio(args.input_path).rename({"x":args.x_dim_name,"y":args.y_dim_name})
 ds = xr.Dataset()
-ds[args.variable_name] = raster
-ds.to_netcdf(args.output_path)
+ds[args.variable_name] = raster.squeeze()
+del ds["band"]
+ds.to_netcdf(args.output_path,encoding={args.variable_name:{"dtype":"short","zlib":True,"complevel":5,"_FillValue":"-9999"}})

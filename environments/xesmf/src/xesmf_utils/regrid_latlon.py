@@ -29,14 +29,19 @@ RETRY_DELAY = 60
 
 class RegridLatLon:
 
-    def __init__(self, input_path, grid_path, output_folder=None, output_min_path=None,
-                 output_min_chunksize=1800, coarsen=None):
+    def __init__(self, input_path, grid_path, variables, output_folder=None, output_aggregation_path=None,
+                 output_aggregation_chunksize=1800, output_aggregation_function="max",
+                 coarsen=None, interpolate_box=None, interpolate_min=None):
         self.input_path = input_path
         self.grid_path = grid_path
+        self.variables = variables
         self.output_folder = output_folder
-        self.output_min_path = output_min_path
-        self.output_min_chunksize = output_min_chunksize
+        self.output_aggregation_path = output_aggregation_path
+        self.output_aggregation_chunksize = output_aggregation_chunksize
+        self.output_aggregation_function = output_aggregation_function
         self.coarsen = coarsen
+        self.interpolate_box = interpolate_box
+        self.interpolate_min = interpolate_min
         self.logger = logging.getLogger("RegridLatLon")
 
     def run(self, limit=None):
@@ -55,7 +60,7 @@ class RegridLatLon:
 
         grid = xr.open_dataset(self.grid_path)
         if self.coarsen:
-            grid = grid[{'lat': slice(None, None, self.coarsen), 'lon': slice(None, None, self.coarsen)}]
+            grid = grid[{'nj': slice(None, None, self.coarsen), 'ni': slice(None, None, self.coarsen)}]
         self.logger.info(grid)
 
         # work out the indices on the target grid
@@ -66,7 +71,7 @@ class RegridLatLon:
         target_height = grid.lat.shape[0]
         target_width = grid.lon.shape[0]
 
-        accumulated_mins = {}
+        accumulated = {}
 
         for input_file_path in input_file_paths:
             complete = False
@@ -82,8 +87,16 @@ class RegridLatLon:
 
                     ds = xr.open_dataset(input_file_path)
 
-                    indices_nj = np.int32(np.round(target_height * (ds.lat - lat0)/(latN-lat0)))
-                    indices_ni = np.int32(np.round(target_width * (ds.lon - lon0)/(lonN-lon0)))
+                    if len(ds.lat.shape) == 1:
+                        shape = (len(ds.lat),len(ds.lon))
+                        lats2d = np.broadcast_to(ds.lat.data[None].T, shape)
+                        lons2d = np.broadcast_to(ds.lon.data, shape)
+                    else:
+                        lats2d = ds.lat.data
+                        lons2d = ds.lon.data
+
+                    indices_nj = np.int32(np.round(target_height * (lats2d - lat0)/(latN-lat0)))
+                    indices_ni = np.int32(np.round(target_width * (lons2d - lon0)/(lonN-lon0)))
 
                     # set indices to (target_height,target_width) for points that lie outside the target grid
                     indices_nj = np.where(indices_nj < 0, target_height, indices_nj)
@@ -94,7 +107,6 @@ class RegridLatLon:
                     output_ds = None
                     if output_file_path:
                         output_ds = xr.Dataset()
-                        output_ds["time"] = ds["time"]
                         output_ds["lat"] = grid["lat"]
                         output_ds["lon"] = grid["lon"]
 
@@ -102,22 +114,29 @@ class RegridLatLon:
                         encodings["lat"] = {"zlib": True, "complevel": 5}
                         encodings["lon"] = {"zlib": True, "complevel": 5}
 
-                    for v in ds.variables:
-                        if v != "lat" and v != "lon" and v != "time":
-                            if len(ds[v].shape) == 3:
-                                target_data = np.zeros((1,target_height + 1, target_width + 1))
-                                target_data[:, :] = np.nan
-                                target_data[0,indices_nj,indices_ni] = ds[v].data
-                                if output_ds is not None:
-                                    output_ds[v] = xr.DataArray(target_data[:,:-1,:-1], dims=("time","lat","lon"))
-                                    encodings[v] = {"zlib": True, "complevel": 5}
-                                if self.output_min_path:
-                                    if v not in accumulated_mins:
-                                        a = np.zeros((target_height,target_width))
-                                        a[:,:] = np.nan
-                                        accumulated_mins[v] = a
-                                    accumulated_mins[v] = np.fmin(target_data[0,:-1,:-1],accumulated_mins[v])
-
+                    for v in self.variables:
+                        da = ds[v].squeeze()
+                        if len(da.dims) == 2:
+                            self.logger.info(f"\treading: {v}")
+                            target_data = np.zeros((target_height + 1, target_width + 1))
+                            target_data[:, :] = np.nan
+                            target_data[indices_nj,indices_ni] = ds[v].data
+                            if output_ds is not None:
+                                output_ds[v] = xr.DataArray(target_data[:-1,:-1], dims=("lat","lon"))
+                                encodings[v] = {"zlib": True, "complevel": 5}
+                            if self.output_aggregation_path:
+                                if v not in accumulated:
+                                    a = np.zeros((target_height,target_width))
+                                    a[:,:] = np.nan
+                                    accumulated[v] = a
+                                if self.output_aggregation_function == "max":
+                                    accumulated[v] = np.fmin(target_data[:-1,:-1], accumulated[v])
+                                elif self.output_aggregation_function == "min":
+                                    accumulated[v] = np.fmax(target_data[:-1, :-1], accumulated[v])
+                                else:
+                                    raise Exception(f"Invalid aggregation function {self.output_aggregation_function}")
+                        else:
+                            self.logger.error(f"variable {v} does not have exactly two non-unit dimensions")
                     if output_file_path:
                         self.logger.info(f"writing: {output_file_path}")
                         output_ds.to_netcdf(output_file_path,encoding=encodings)
@@ -137,23 +156,28 @@ class RegridLatLon:
                 break
             idx += 1
 
-        if self.output_min_path:
-            self.logger.info(f"writing: {self.output_min_path}")
+        if self.output_aggregation_path:
+            self.logger.info(f"writing: {self.output_aggregation_path}")
             for retry in range(0, NUM_RETRIES):
-                try:
+                # try:
                     encodings = {}
-                    for v in accumulated_mins:
-                        da = xr.DataArray(data=accumulated_mins[v],dims=("lat","lon"))
+                    for v in accumulated:
+                        da = xr.DataArray(data=accumulated[v],dims=("nj","ni"))
                         # interpolate using rolling mean
-                        # means = da.rolling(lat=3, lon=3, center=True, min_periods=1).mean()
-                        # da = da.where(~np.isnan(da), means)
+                        if self.interpolate_box is not None:
+                            means = da.rolling(lat=self.interpolate_box, lon=self.interpolate_box, center=True, min_periods=self.interpolate_min).mean()
+                            da = da.where(~np.isnan(da), means)
                         grid[v] = da
                         encodings[v] = {"zlib": True, "complevel": 5, "dtype": "float32",
-                                        "chunksizes": [self.output_min_chunksize, self.output_min_chunksize]}
-                    grid.to_netcdf(self.output_min_path, encoding=encodings)
-                except Exception as ex:
-                    self.logger.error(f"Error writing: {self.output_min_path} : {str(ex)}")
-                    time.sleep(RETRY_DELAY)
+                                        "chunksizes": [self.output_aggregation_chunksize, self.output_aggregation_chunksize]}
+
+                    grid.set_coords(["lat", "lon"])
+                    print(grid)
+                    grid.to_netcdf(self.output_aggregation_path, encoding=encodings)
+                    break
+                # except Exception as ex:
+                #    self.logger.error(f"Error writing: {self.output_aggregation_path} : {str(ex)}")
+                #    time.sleep(RETRY_DELAY)
 
 
 def main():
@@ -165,8 +189,12 @@ def main():
                         help="path to file defining grid with 1D lat/lon onto which data is to be regridded")
     parser.add_argument("--output-folder", help="path to the output folder into which regridded files are be written",
                         default=None)
-    parser.add_argument("--output-min-path", help="Aggregate minimum values and output to this path", default=None)
-    parser.add_argument("--output-min-chunksize", type=int, help="Chunksize for aggregate min output", default=1800)
+    parser.add_argument("--variables", nargs="+", help="Specify variables to process")
+    parser.add_argument("--output-aggregation-path", help="Aggregate values and output to this path", default=None)
+    parser.add_argument("--output-aggregation-chunksize", type=int, help="Aggregate values and output to this path", default=1000)
+    parser.add_argument("--output-aggregation-function", type=str, help="Accumulation function to apply, should be min or max", default="min")
+    parser.add_argument("--interpolate", type=int, help="perform missing value interpolation with this size of box")
+    parser.add_argument("--interpolate-min", type=int, help="perform missing value interpolation with at least this number of items in the box")
     parser.add_argument("--limit", type=int, help="process only this many scenes (for testing)", default=None)
     parser.add_argument("--coarsen", type=int, help="coarsen the target grid (for testing)", default=None)
 
@@ -174,8 +202,13 @@ def main():
 
     logging.basicConfig(level=logging.INFO)
     regridder = RegridLatLon(input_path=args.input_data_path, grid_path=args.target_grid_path,
-                             output_folder=args.output_folder, output_min_path=args.output_min_path,
-                             output_min_chunksize=args.output_min_chunksize, coarsen=args.coarsen)
+                             variables=args.variables,
+                             output_folder=args.output_folder,
+                             output_aggregation_path=args.output_aggregation_path,
+                             output_aggregation_chunksize=args.output_aggregation_chunksize,
+                             output_aggregation_function=args.output_aggregation_function,
+                             interpolate_box=args.interpolate, interpolate_min=args.interpolate_min,
+                             coarsen=args.coarsen)
     regridder.run(limit=args.limit)
 
 

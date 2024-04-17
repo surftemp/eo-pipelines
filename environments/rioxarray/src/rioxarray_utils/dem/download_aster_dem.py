@@ -2,7 +2,7 @@
 
 # -*- coding: utf-8 -*-
 
-#     download and assemble ASTER DEM tiles
+#     download ASTER DEM tiles
 #
 #     Copyright (C) 2023  EOCIS and National Centre for Earth Observation (NCEO)
 #
@@ -124,8 +124,6 @@ fetch_urls() {
 fetch_urls <<'EDSCEOF'"""
 bash_code2 = """EDSCEOF"""
 
-crs = None
-
 
 def fetch_dem(min_lat, max_lat, min_lon, max_lon, folder, username, password):
 
@@ -172,56 +170,6 @@ def fetch_dem(min_lat, max_lat, min_lon, max_lon, folder, username, password):
     else:
         print("DEM files already downloaded")
 
-def glue_dem(min_lat, max_lat, min_lon, max_lon, input_folder, output_path):
-
-    lat_cache = {}
-    lon_cache = {}
-
-    def preprocessor(ds):
-        # ASTER DEM tiles seem to overlap by 1 pixel in both dimensions
-        # remove last latidude and longitude pixels from each tile to ensure they don't overlap
-        # because this causes a problem in the merged DEM dataset
-        nlat = len(ds.lat)
-        nlon = len(ds.lon)
-        ds2 = ds.isel(lat=range(0, nlat - 1), lon=range(0, nlon - 1))
-
-        # get the min lat/lon of the tile
-        lat_min = int(ds2.lat.min())
-        lon_min = int(ds2.lon.min())
-
-        # standardise lats/lons as there are occasionally small differences at about e-14
-        # that will cause problems with dask
-
-        if lat_min in lat_cache:
-            ds2["lat"] = lat_cache[lat_min]
-        else:
-            lat_cache[lat_min] = ds2["lat"]
-
-        if lon_min in lon_cache:
-            ds2["lon"] = lon_cache[lon_min]
-        else:
-            lon_cache[lon_min] = ds2["lon"]
-
-        global crs
-        if crs is None:
-            crs = ds2["crs"]
-        ds2 = ds2.drop_vars("crs")
-        ds2.set_coords(["lat","lon"])
-
-        return ds2
-
-    dem_path = input_folder + "/*.nc"
-
-    ds = xr.open_mfdataset(dem_path, preprocess=preprocessor)
-    ds = ds.sel(lat=slice(min_lat,max_lat),lon=slice(min_lon,max_lon))
-    global crs
-    if crs is not None:
-        ds["crs"] = crs
-    ds.to_netcdf(output_path, encoding={
-        "ASTER_GDEM_DEM": {
-            "zlib": True, "complevel": 5, "chunksizes": [1800, 1800], "dtype": "int16"
-        }
-    })
 
 def main():
     parser = argparse.ArgumentParser()
@@ -231,21 +179,17 @@ def main():
     parser.add_argument("--lat-max", type=float, help="maximum latitude, decimal degrees", required=True)
     parser.add_argument("--lon-max", type=float, help="maximum longitude, decimal degrees", required=True)
     parser.add_argument("--download-folder", help="folder for storing downloaded dem tiles", required=True)
-    parser.add_argument("--skip-download", action="store_true", help="assume all tiles downloaded")
 
     args = parser.parse_args()
 
-    if not args.skip_download:
-        username = os.getenv("USGS_USERNAME")
-        password = os.getenv("USGS_PASSWORD")
+    username = os.getenv("USGS_USERNAME")
+    password = os.getenv("USGS_PASSWORD")
 
-        if not username or not password:
-            raise Exception("Please set USGS_USERNAME and USGS_PASSWORD environment variables")
+    if not username or not password:
+        raise Exception("Please set USGS_USERNAME and USGS_PASSWORD environment variables")
 
-        os.makedirs(args.download_folder, exist_ok=True)
-        fetch_dem(args.lat_min,args.lat_max,args.lon_min,args.lon_max,args.download_folder,username,password)
-
-    glue_dem(args.lat_min,args.lat_max,args.lon_min,args.lon_max,args.download_folder,args.output_path)
+    os.makedirs(args.download_folder, exist_ok=True)
+    fetch_dem(args.lat_min,args.lat_max,args.lon_min,args.lon_max,args.download_folder,username,password)
 
 if __name__ == '__main__':
     main()

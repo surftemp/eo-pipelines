@@ -17,6 +17,7 @@ if __name__ == '__main__':
     parser.add_argument("--lon-variable-name", help="longitude variable name", default="lon")
     parser.add_argument("--y-dim", help="y dimension name", default="nj")
     parser.add_argument("--x-dim", help="x dimension name", default="ni")
+    parser.add_argument("--one-d", action="store_true", help="write 1d lat lon arrays")
 
     args = parser.parse_args()
 
@@ -26,11 +27,18 @@ if __name__ == '__main__':
 
     shape = len(lats), len(lons)
 
-    lats2d = np.broadcast_to(lats[None].T, shape)
-    lons2d = np.broadcast_to(lons, shape)
+    if args.one_d:
+        target_ds[args.lat_variable_name] = xr.DataArray(lats, dims=(args.y_dim,),
+                                                         attrs={"units": "degrees_north", "standard_name": "latitude"})
+        target_ds[args.lon_variable_name] = xr.DataArray(lons, dims=(args.x_dim,),
+                                                         attrs={"units": "degrees_east", "standard_name": "longitude"})
+    else:
 
-    target_ds[args.lat_variable_name] = xr.DataArray(lats2d, dims=(args.y_dim,args.x_dim),attrs={"units":"degrees_north","standard_name":"latitude"})
-    target_ds[args.lon_variable_name] = xr.DataArray(lons2d, dims=(args.y_dim,args.x_dim),attrs={"units":"degrees_east","standard_name":"longitude"})
+        lats2d = np.broadcast_to(lats[None].T, shape)
+        lons2d = np.broadcast_to(lons, shape)
+
+        target_ds[args.lat_variable_name] = xr.DataArray(lats2d, dims=(args.y_dim,args.x_dim),attrs={"units":"degrees_north","standard_name":"latitude"})
+        target_ds[args.lon_variable_name] = xr.DataArray(lons2d, dims=(args.y_dim,args.x_dim),attrs={"units":"degrees_east","standard_name":"longitude"})
 
     target_ds.to_netcdf(args.output_path)
 
