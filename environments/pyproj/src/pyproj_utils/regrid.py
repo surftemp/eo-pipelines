@@ -26,19 +26,16 @@ import sys
 import pyproj
 import time
 
-NUM_RETRIES = 5
 RETRY_DELAY = 60
 
 class Regrid:
 
     def __init__(self, input_path, grid_path, variables,
                  source_x, source_y, source_crs, target_x, target_y, target_crs,
-                 output_path=None,
-                 mode="max",
-                 coarsen=None, stride=4):
+                 output_path, coarsen=None, stride=4, nr_retries=0):
         self.input_path = input_path
         self.grid_path = grid_path
-        self.variables = variables
+        self.variables = [self.decode_variable_mode(v) for v in variables]
         self.source_x = source_x
         self.source_y = source_y
         self.source_crs = source_crs
@@ -46,11 +43,40 @@ class Regrid:
         self.target_y = target_y
         self.target_crs = target_crs
         self.output_path = output_path
-        self.mode = mode
+
         self.coarsen = coarsen
         self.stride = stride
-        self.logger = logging.getLogger("SuperRegrid")
+        self.nr_retries = nr_retries
 
+        self.grid = None
+        self.target_height = None
+        self.target_width = None
+        self.target_x_dim = None
+        self.target_y_dim = None
+
+        self.accumulated_mins = {}
+        self.accumulated_maxes = {}
+        self.accumulated_means = {}
+        self.accumulated_nearest = {}
+
+        self.counts = {}  # mean only
+        self.closest_sq_distances = {}  # nearest only
+
+        self.logger = logging.getLogger("Regrid")
+
+    def decode_variable_mode(self, variable):
+        splits = variable.split(":")
+        if len(splits) == 2:
+            variable_name = splits[0]
+            mode = splits[1]
+            if mode not in ["min","max","mean","nearest"]:
+                raise ValueError(f"Invalid mode {mode} for variable {variable}")
+        elif len(splits) == 1:
+            variable_name = variable
+            mode = "nearest"
+        else:
+            raise ValueError(f"Invalid variable directive: {variable} should be NAME or NAME:MODE")
+        return variable_name, mode
 
     def run(self, limit=None):
         output_folder = os.path.split(self.output_path)[0]
@@ -62,54 +88,42 @@ class Regrid:
         else:
             input_file_paths = [self.input_path]
 
+        output_individual_files = os.path.exists(self.output_path) and os.path.isdir(self.output_path)
+
         idx = 1
         processed = 0
         total = len(input_file_paths)
 
-        grid = xr.open_dataset(self.grid_path)
+        self.grid = xr.open_dataset(self.grid_path)
         if self.coarsen:
-            grid = grid[{'nj': slice(None, None, self.coarsen), 'ni': slice(None, None, self.coarsen)}]
-        self.logger.info(grid)
+            self.grid = self.grid[{'nj': slice(None, None, self.coarsen), 'ni': slice(None, None, self.coarsen)}]
+        self.logger.info(self.grid)
 
         # work out the indices on the target grid
-        target_y0 = float(grid[self.target_y][0])
-        target_yN = float(grid[self.target_y][-1])
-        target_x0 = float(grid[self.target_x][0])
-        target_xN = float(grid[self.target_x][-1])
+        target_y0 = float(self.grid[self.target_y][0])
+        target_yN = float(self.grid[self.target_y][-1])
+        target_x0 = float(self.grid[self.target_x][0])
+        target_xN = float(self.grid[self.target_x][-1])
 
-        if len(grid[self.target_x].shape) != 1:
-            self.logger.error("grid x variable should have only 1 dimension")
+        if len(self.grid[self.target_x].shape) != 1:
+            self.logger.error("target grid x variable should have only 1 dimension")
             sys.exit(-1)
 
-        if len(grid[self.target_y].shape) != 1:
-            self.logger.error("grid y variable should have only 1 dimension")
+        if len(self.grid[self.target_y].shape) != 1:
+            self.logger.error("target grid y variable should have only 1 dimension")
             sys.exit(-1)
 
-        target_height = grid[self.target_y].shape[0]
-        target_width = grid[self.target_x].shape[0]
+        self.target_height = self.grid[self.target_y].shape[0]
+        self.target_width = self.grid[self.target_x].shape[0]
 
-        x_dim = grid[self.target_x].dims[0]
-        y_dim = grid[self.target_y].dims[0]
+        self.target_x_dim = self.grid[self.target_x].dims[0]
+        self.target_y_dim = self.grid[self.target_y].dims[0]
 
-        accumulated = {}
-        counts = {} # mean only
-        closest_sq_distances = {} # nearest only
-
-        for v in self.variables:
-            if self.mode == "mean":
-                counts[v] = np.zeros((target_height, target_width))
-                accumulated[v] = np.zeros((target_height, target_width)) # will hold the sum
-            else:
-                if self.mode == "nearest":
-                    closest_sq_distances[v] = np.zeros((target_height,target_width))
-                    closest_sq_distances[v][:,:] = np.nan
-                a = np.zeros((target_height, target_width))
-                a[:, :] = np.nan
-                accumulated[v] = a
+        self.reset()
 
         for input_file_path in input_file_paths:
             complete = False
-            for retry in range(0,NUM_RETRIES):
+            for retry in range(0,self.nr_retries+1):
                 try:
                     input_file_name = os.path.split(input_file_path)[1]
 
@@ -118,76 +132,78 @@ class Regrid:
                     ds = xr.open_dataset(input_file_path)
 
                     if len(ds.lat.shape) == 1:
-                        shape = (len(ds.lat),len(ds.lon))
-                        x2d = np.broadcast_to(ds[self.source_x].data[None].T, shape)
-                        y2d = np.broadcast_to(ds[self.source_y], shape)
+                        shape = (len(ds[self.source_y]),len(ds[self.source_x]))
+                        source_y_dim = ds[self.source_y].dims[0]
+                        source_x_dim = ds[self.source_x].dims[0]
+                        y2d = xr.DataArray(np.broadcast_to(ds[self.source_y].data[None].T, shape),dims=(source_y_dim,source_x_dim))
+                        x2d = xr.DataArray(np.broadcast_to(ds[self.source_x], shape),dims=(source_y_dim,source_x_dim))
                     else:
-                        x2d = ds[self.source_x].data
-                        y2d = ds[self.source_y].data
+                        x2d = ds[self.source_x]
+                        y2d = ds[self.source_y]
+                        source_y_dim = ds[self.source_x].dims[0]
+                        source_x_dim = ds[self.source_x].dims[1]
+
+                    target_shape = (len(self.grid[self.target_y]), len(self.grid[self.target_x]))
+                    target_y2d = np.broadcast_to(self.grid[self.target_y].data[None].T, target_shape)
+                    target_x2d = np.broadcast_to(self.grid[self.target_x], target_shape)
 
                     if self.source_crs != self.target_crs:
                         transformer = pyproj.Transformer.from_crs(self.source_crs, self.target_crs)
-                        x2d, y2d = transformer.transform(y2d, x2d)
+                        x2d, y2d = transformer.transform(y2d.data, x2d.data)
+                        y2d = xr.DataArray(y2d,dims=(source_y_dim, source_x_dim))
+                        x2d = xr.DataArray(x2d,dims=(source_y_dim, source_x_dim))
 
-                    indices_nj = np.int32(np.round(target_height * (y2d - target_y0)/(target_yN-target_y0)))
-                    indices_ni = np.int32(np.round(target_width * (x2d - target_x0)/(target_xN-target_x0)))
+                    indices_nj = np.int32(np.round(self.target_height * (y2d.data - target_y0)/(target_yN-target_y0)))
+                    indices_ni = np.int32(np.round(self.target_width * (x2d.data - target_x0)/(target_xN-target_x0)))
 
                     # set indices to (target_height,target_width) for points that lie outside the target grid
-                    indices_nj = np.where(indices_nj < 0, target_height, indices_nj)
-                    indices_nj = np.where(indices_nj >= target_height, target_height, indices_nj)
-                    indices_ni = np.where(indices_ni < 0, target_width, indices_ni)
-                    indices_ni = np.where(indices_ni >= target_width, target_width, indices_ni)
+                    indices_nj = np.where(indices_nj < 0, self.target_height, indices_nj)
+                    indices_nj = np.where(indices_nj >= self.target_height, self.target_height, indices_nj)
+                    indices_ni = np.where(indices_ni < 0, self.target_width, indices_ni)
+                    indices_ni = np.where(indices_ni >= self.target_width, self.target_width, indices_ni)
 
-                    indices_nj = xr.DataArray(indices_nj, dims=(y_dim, x_dim))
-                    indices_ni = xr.DataArray(indices_ni, dims=(y_dim, x_dim))
+                    indices_nj = xr.DataArray(indices_nj, dims=(source_y_dim, source_x_dim))
+                    indices_ni = xr.DataArray(indices_ni, dims=(source_y_dim, source_x_dim))
 
-                    sq_distances = {}
-                    if self.mode == "nearest":
-                        self.logger.info(f"\tCalculating distances")
-                        for xs in range(0, self.stride):
-                            for ys in range(0, self.stride):
-                                slice_idx = ys * self.stride + xs
-                                self.logger.info(f"\t\tCalculating distances for slice {slice_idx + 1}/{self.stride ** 2}")
-                                s = {}
-                                s[x_dim] = slice(xs, None, self.stride)
-                                s[y_dim] = slice(ys, None, self.stride)
-                                iy = indices_nj.isel(**s).data
-                                ix = indices_ni.isel(**s).data
-                                source_coords_x = ds[self.source_x].isel(**s).data
-                                source_coords_y = ds[self.source_y].isel(**s).data
-                                target_coords_x = grid[self.target_x][iy,ix].data
-                                target_coords_y = grid[self.target_y][iy, ix].data
-                                sq_distances[(ys,xs)] = np.power(source_coords_y-target_coords_y,2)+np.power(source_coords_x-target_coords_x,2)
-
-                    for v in self.variables:
+                    for (v,mode) in self.variables:
                         da = ds[v].squeeze()
                         if len(da.dims) == 2:
-                            self.logger.info(f"\tReading: {v}")
-                            target_data = np.zeros((target_height + 1, target_width + 1))
+                            self.logger.info(f"\tCalculating {mode} for {v}")
+                            target_data = np.zeros((self.target_height + 1, self.target_width + 1))
                             target_data[:, :] = np.nan
                             for xs in range(0,self.stride):
                                 for ys in range(0,self.stride):
-                                    slice_idx = ys*self.stride+xs
+                                    slice_idx = xs*self.stride+ys
                                     self.logger.info(f"\t\tProcessing slice {slice_idx+1}/{self.stride**2}")
                                     s = {}
-                                    s[x_dim] = slice(xs,None,self.stride)
-                                    s[y_dim] = slice(ys,None,self.stride)
+                                    s[source_x_dim] = slice(xs,None,self.stride)
+                                    s[source_y_dim] = slice(ys,None,self.stride)
                                     iy = indices_nj.isel(**s).data
                                     ix = indices_ni.isel(**s).data
                                     target_data[iy,ix] = da.isel(**s).data
 
-                                    if self.mode == "max":
-                                        accumulated[v] = np.fmin(target_data[:-1,:-1], accumulated[v])
-                                    elif self.mode == "min":
-                                        accumulated[v] = np.fmax(target_data[:-1, :-1], accumulated[v])
-                                    elif self.mode == "mean":
-                                        counts[v] = counts[v] + np.where(np.isnan(target_data),0,1)
-                                        accumulated[v] = accumulated[v] + np.where(np.isnan(target_data),0,target_data)
-                                    elif self.mode == "nearest":
-                                        sq_d = sq_distances[(ys,xs)]
-                                        accumulated[v] = np.where()
-                                    else:
-                                        raise Exception(f"Invalid mode {self.mode}")
+                                    if mode == "min":
+                                        self.accumulated_mins[v] = np.fmin(target_data[:-1,:-1], self.accumulated_mins[v])
+                                    elif mode == "max":
+                                        self.accumulated_maxes[v] = np.fmax(target_data[:-1, :-1], self.accumulated_maxes[v])
+                                    elif mode == "mean":
+                                        self.counts[v] = self.counts[v] + np.where(np.isnan(target_data[:-1,:-1]),0,1)
+                                        self.accumulated_means[v] = self.accumulated_means[v] + np.where(np.isnan(target_data[:-1,:-1]),0,target_data[:-1,:-1])
+                                    elif mode == "nearest":
+                                        source_coords_x = np.zeros((self.target_height + 1, self.target_width + 1))
+                                        source_coords_x[:, :] = np.nan
+                                        source_coords_y = np.zeros((self.target_height + 1, self.target_width + 1))
+                                        source_coords_y[:, :] = np.nan
+                                        source_coords_x[iy,ix] = x2d.isel(**s).data
+                                        source_coords_y[iy,ix] = y2d.isel(**s).data
+
+                                        sq_dist = np.power(source_coords_y[:-1,:-1] - target_y2d, 2) \
+                                                       + np.power(source_coords_x[:-1,:-1] - target_x2d, 2)
+
+                                        self.accumulated_nearest[v] = np.where(sq_dist < self.closest_sq_distances[v], target_data[:-1,:-1], self.accumulated_nearest[v])
+                                        self.closest_sq_distances[v] = np.where(np.isnan(sq_dist), self.closest_sq_distances[v],
+                                                                           np.where(sq_dist < self.closest_sq_distances[v], sq_dist, self.closest_sq_distances[v]))
+
                         else:
                             self.logger.error(f"variable {v} does not have exactly two non-unit dimensions")
                     complete = True
@@ -200,33 +216,76 @@ class Regrid:
             if not complete:
                 self.logger.error(f"Unable to process: {input_file_name}")
 
+            if output_individual_files:
+                self.output_to(os.path.join(self.output_path,input_file_name))
+                self.reset()
+
             processed += 1
             if limit is not None and processed >= limit:
                 self.logger.info(f"stopping after processing {processed} scenes")
                 break
             idx += 1
 
-        if self.mode == "mean":
-            for v in accumulated:
-                accumulated[v] = np.where(counts[v] > 0, accumulated[v]/counts[v],np.nan)
+        if not output_individual_files:
+            self.output_to(self.output_path)
+            self.reset()
 
-        if self.output_path:
-            self.logger.info(f"writing: {self.output_path}")
-            for retry in range(0, NUM_RETRIES):
-                try:
-                    encodings = {}
-                    for v in accumulated:
-                        da = xr.DataArray(data=accumulated[v],dims=(y_dim,x_dim))
-                        grid[v] = da
-                        encodings[v] = {"zlib": True, "complevel": 5, "dtype": "float32"}
+    def output_to(self,path):
+        for (v, mode) in self.variables:
+            if mode == "mean":
+                self.accumulated_means[v] = np.where(self.counts[v] > 0, self.accumulated_means[v]/self.counts[v], np.nan)
 
-                    grid.set_coords([self.target_y, self.target_x])
-                    grid.to_netcdf(self.output_path, encoding=encodings)
-                    break
-                except Exception as ex:
-                    self.logger.error(f"Error writing: {self.output_path} : {str(ex)}")
-                    time.sleep(RETRY_DELAY)
+        output_ds = self.grid.copy()
+        self.logger.info(f"writing: {path}")
+        for retry in range(0, self.nr_retries+1):
+            try:
+                encodings = {}
+                for (v,mode) in self.variables:
+                    accumulated = None
+                    if mode == "mean":
+                        accumulated = self.accumulated_means[v]
+                    elif mode == "max":
+                        accumulated = self.accumulated_maxes[v]
+                    elif mode == "min":
+                        accumulated = self.accumulated_mins[v]
+                    elif mode == "nearest":
+                        accumulated = self.accumulated_nearest[v]
 
+                    output_variable = v+"_"+mode
+                    da = xr.DataArray(data=accumulated[v],dims=(self.target_y_dim,self.target_x_dim))
+                    output_ds[output_variable] = da
+                    encodings[output_variable] = {"zlib": True, "complevel": 5, "dtype": "float32"}
+
+                output_ds.set_coords([self.target_y, self.target_x])
+                output_ds.to_netcdf(self.output_path, encoding=encodings)
+                break
+            except Exception as ex:
+                self.logger.error(f"Error writing: {self.output_path} : {str(ex)}")
+                time.sleep(RETRY_DELAY)
+
+    def reset(self):
+        self.accumulated_mins = {}
+        self.accumulated_maxes = {}
+        self.accumulated_means = {}
+        self.accumulated_nearest = {}
+
+        self.counts = {}  # mean only
+        self.closest_sq_distances = {}  # nearest only
+        for (v,mode) in self.variables:
+            if mode == "mean":
+                self.counts[v] = np.zeros((self.target_height, self.target_width))
+                self.accumulated_means[v] = np.zeros((self.target_height, self.target_width)) # will hold the sum
+            if mode == "min":
+                self.accumulated_mins[v] = np.zeros((self.target_height, self.target_width))  # will hold the mins
+            if mode == "max":
+                self.accumulated_maxes[v] = np.zeros((self.target_height, self.target_width))  # will hold the maxes
+            else:
+                if mode == "nearest":
+                    self.closest_sq_distances[v] = np.zeros((self.target_height,self.target_width))
+                    self.closest_sq_distances[v][:,:] = 1e16
+                a = np.zeros((self.target_height, self.target_width))
+                a[:, :] = np.nan
+                self.accumulated_nearest[v] = a
 
 def main():
     import argparse
@@ -235,6 +294,8 @@ def main():
                         help="input data file to be regridded or folder containing files to be regridded")
     parser.add_argument("target_grid_path",
                         help="path to file defining grid with 1D lat/lon onto which data is to be regridded")
+    parser.add_argument("output_path",
+                        help="path to file to hold regridded data")
 
     parser.add_argument("--target-y", type=str, help="target grid y dimension variable nane", default="lat")
     parser.add_argument("--target-x", type=str, help="target grid x dimension variable nane", default="lon")
@@ -244,12 +305,11 @@ def main():
     parser.add_argument("--source-x", type=str, help="input x dimension variable nane", default="lon")
     parser.add_argument("--source-crs", type=int, help="source CRS", default=4326)
 
+    parser.add_argument("--variables", nargs="+", help="Specify variables to process, for nearest use NAME, for other modes (min,max,mean) use NAME:MODE")
 
-    parser.add_argument("--variables", nargs="+", help="Specify variables to process")
-    parser.add_argument("--output-path", help="Aggregate values and output to this path", default=None)
-    parser.add_argument("--mode", type=str, help="Accumulation function to apply, should be mean, min or max", default="min")
     parser.add_argument("--limit", type=int, help="process only this many scenes (for testing)", default=None)
     parser.add_argument("--coarsen", type=int, help="coarsen the target grid (for testing)", default=None)
+    parser.add_argument("--nr-retries", type=int, help="use this many re-attempts to process each input file", default=0)
 
     args = parser.parse_args()
 
@@ -263,8 +323,8 @@ def main():
                              target_y=args.target_y,
                              target_crs=args.target_crs,
                              output_path=args.output_path,
-                             mode=args.mode,
-                             coarsen=args.coarsen)
+                             coarsen=args.coarsen,
+                             nr_retries=args.nr_retries)
     regridder.run(limit=args.limit)
 
 
