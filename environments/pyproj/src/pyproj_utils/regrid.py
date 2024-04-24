@@ -60,9 +60,14 @@ class Regrid:
         self.accumulated_nearest = {}
 
         self.counts = {}  # mean only
-        self.closest_sq_distances = {}  # nearest only
+        self.closest_sq_distances = None  # nearest only
 
         self.logger = logging.getLogger("Regrid")
+
+        self.compute_distances = False
+        for (v,mode) in self.variables:
+            if v == "__distance__" or mode == "nearest":
+                self.compute_distances = True
 
     def decode_variable_mode(self, variable):
         splits = variable.split(":")
@@ -166,6 +171,8 @@ class Regrid:
                     indices_ni = xr.DataArray(indices_ni, dims=(source_y_dim, source_x_dim))
 
                     for (v,mode) in self.variables:
+                        if v == "__distance__":
+                            continue
                         da = ds[v].squeeze()
                         if len(da.dims) == 2:
                             self.logger.info(f"\tCalculating {mode} for {v}")
@@ -200,9 +207,9 @@ class Regrid:
                                         sq_dist = np.power(source_coords_y[:-1,:-1] - target_y2d, 2) \
                                                        + np.power(source_coords_x[:-1,:-1] - target_x2d, 2)
 
-                                        self.accumulated_nearest[v] = np.where(sq_dist < self.closest_sq_distances[v], target_data[:-1,:-1], self.accumulated_nearest[v])
-                                        self.closest_sq_distances[v] = np.where(np.isnan(sq_dist), self.closest_sq_distances[v],
-                                                                           np.where(sq_dist < self.closest_sq_distances[v], sq_dist, self.closest_sq_distances[v]))
+                                        self.accumulated_nearest[v] = np.where(sq_dist < self.closest_sq_distances, target_data[:-1,:-1], self.accumulated_nearest[v])
+                                        self.closest_sq_distances = np.where(np.isnan(sq_dist), self.closest_sq_distances,
+                                                                           np.where(sq_dist < self.closest_sq_distances, sq_dist, self.closest_sq_distances))
 
                         else:
                             self.logger.error(f"variable {v} does not have exactly two non-unit dimensions")
@@ -230,9 +237,11 @@ class Regrid:
             self.output_to(self.output_path)
             self.reset()
 
-    def output_to(self,path):
+    def output_to(self, path):
         for (v, mode) in self.variables:
             if mode == "mean":
+                print(self.accumulated_means[v])
+                print(self.counts[v])
                 self.accumulated_means[v] = np.where(self.counts[v] > 0, self.accumulated_means[v]/self.counts[v], np.nan)
 
         output_ds = self.grid.copy()
@@ -241,18 +250,21 @@ class Regrid:
             try:
                 encodings = {}
                 for (v,mode) in self.variables:
-                    accumulated = None
-                    if mode == "mean":
-                        accumulated = self.accumulated_means[v]
-                    elif mode == "max":
-                        accumulated = self.accumulated_maxes[v]
-                    elif mode == "min":
-                        accumulated = self.accumulated_mins[v]
-                    elif mode == "nearest":
-                        accumulated = self.accumulated_nearest[v]
+                    if v == "__distance__":
+                        accumulated = np.sqrt(self.closest_sq_distances)
+                    else:
+                        accumulated = None
+                        if mode == "mean":
+                            accumulated = self.accumulated_means[v]
+                        elif mode == "max":
+                            accumulated = self.accumulated_maxes[v]
+                        elif mode == "min":
+                            accumulated = self.accumulated_mins[v]
+                        elif mode == "nearest":
+                            accumulated = self.accumulated_nearest[v]
 
                     output_variable = v+"_"+mode
-                    da = xr.DataArray(data=accumulated[v],dims=(self.target_y_dim,self.target_x_dim))
+                    da = xr.DataArray(data=accumulated,dims=(self.target_y_dim,self.target_x_dim))
                     output_ds[output_variable] = da
                     encodings[output_variable] = {"zlib": True, "complevel": 5, "dtype": "float32"}
 
@@ -270,19 +282,21 @@ class Regrid:
         self.accumulated_nearest = {}
 
         self.counts = {}  # mean only
-        self.closest_sq_distances = {}  # nearest only
+        self.closest_sq_distances = None
+
+        if self.compute_distances:
+            self.closest_sq_distances = np.zeros((self.target_height,self.target_width))
+            self.closest_sq_distances[:,:] = 1e16
+
         for (v,mode) in self.variables:
             if mode == "mean":
                 self.counts[v] = np.zeros((self.target_height, self.target_width))
                 self.accumulated_means[v] = np.zeros((self.target_height, self.target_width)) # will hold the sum
-            if mode == "min":
+            elif mode == "min":
                 self.accumulated_mins[v] = np.zeros((self.target_height, self.target_width))  # will hold the mins
-            if mode == "max":
+            elif mode == "max":
                 self.accumulated_maxes[v] = np.zeros((self.target_height, self.target_width))  # will hold the maxes
-            else:
-                if mode == "nearest":
-                    self.closest_sq_distances[v] = np.zeros((self.target_height,self.target_width))
-                    self.closest_sq_distances[v][:,:] = 1e16
+            elif mode == "nearest":
                 a = np.zeros((self.target_height, self.target_width))
                 a[:, :] = np.nan
                 self.accumulated_nearest[v] = a
