@@ -46,7 +46,7 @@ class USGS_Search(PipelineStage):
         super().__init__(node_services, "search")
         self.node_services = node_services
         self.output_path = self.get_configuration().get("output_path", self.get_working_directory())
-        self.get_logger().info("eo_pipeline_stages.Fetch %s" % USGS_Search.VERSION)
+        self.get_logger().info("eo_pipeline_stages.Search %s" % USGS_Search.VERSION)
 
     def get_parameters(self):
         row_filter = self.get_configuration().get("row","")

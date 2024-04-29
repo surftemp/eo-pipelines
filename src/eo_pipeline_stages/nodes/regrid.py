@@ -23,7 +23,6 @@
 import os.path
 
 from eo_pipelines.pipeline_stage import PipelineStage
-from eo_pipelines.pipeline_stage_utils import format_int
 
 class Regrid(PipelineStage):
 
@@ -40,7 +39,6 @@ class Regrid(PipelineStage):
             if not os.path.isabs(self.output_path):
                 self.output_path = os.path.join(self.get_working_directory(),self.output_path)
 
-
         self.get_logger().info("eo_pipeline_stages.Regrid %s" % Regrid.VERSION)
 
     def get_parameters(self):
@@ -48,16 +46,15 @@ class Regrid(PipelineStage):
             "GRID_PATH": self.get_configuration().get("target_grid_path"),
             "SOURCE_X": self.get_configuration().get("source_x"),
             "SOURCE_Y": self.get_configuration().get("source_y"),
-            "SOURCE_CRS": self.get_configuration().get("source_crs"),
+            "SOURCE_CRS": str(self.get_configuration().get("source_crs")),
             "TARGET_X": self.get_configuration().get("target_x"),
             "TARGET_Y": self.get_configuration().get("target_y"),
-            "TARGET_CRS": self.get_configuration().get("target_crs"),
-            "VARIABLES": " ".join(self.get_configuration("variables"))
+            "TARGET_CRS": str(self.get_configuration().get("target_crs")),
+            "VARIABLES": " ".join(self.get_configuration().get("variables"))
         }
 
     def execute_stage(self, inputs):
 
-        os.makedirs(self.cache_path,exist_ok=True)
         executor = self.create_executor()
 
         output_scenes = {}
@@ -82,8 +79,7 @@ class Regrid(PipelineStage):
                 for input_path in input_paths:
                     custom_env = self.get_parameters()
                     custom_env["INPUT_PATH"] = input_path
-                    input_filename = os.path.split(input_path)[1]
-                    custom_env["OUTPUT_PATH"] = os.path.join(dataset_output_folder,input_filename)
+                    custom_env["OUTPUT_PATH"] = dataset_output_folder
                     script = os.path.join(os.path.split(__file__)[0], "regrid.sh")
                     task_id = executor.queue_task(self.get_stage_id(),script, custom_env, self.get_working_directory(),
                                               description=os.path.split(input_path)[-1])

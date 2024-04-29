@@ -53,6 +53,8 @@ class Regrid:
         self.target_x_dim = None
         self.target_y_dim = None
 
+        self.dtypes = {}
+
         self.accumulated_mins = {}
         self.accumulated_maxes = {}
         self.accumulated_means = {}
@@ -142,6 +144,10 @@ class Regrid:
 
                     ds = xr.open_dataset(input_file_path) if input_file_path else self.input_ds
 
+                    time_da = None
+                    if "time" in ds:
+                        time_da = ds["time"]
+
                     self.dataset_attrs = ds.attrs
 
                     if len(ds[self.source_y].shape) == 1:
@@ -193,9 +199,11 @@ class Regrid:
                             indices_by_slice[(ys,xs)] = (s,iy,ix)
 
                     for (v,mode) in self.variables:
-                        if v == "__distance__":
-                            continue
+
+                        self.dtypes[v] = ds[v].dtype
+
                         da = ds[v].squeeze()
+
                         if v not in self.variable_attrs:
                             self.variable_attrs[v] = da.attrs
                         if len(da.dims) == 2:
@@ -244,12 +252,12 @@ class Regrid:
                 self.logger.error(f"Unable to process: {input_file_name}")
 
             if output_individual_files:
-                output_ds, encodings = self.prepare_output_dataset()
+                output_ds, encodings = self.prepare_output_dataset(time_da=time_da)
                 output_path = os.path.join(self.output_path, input_file_name)
                 for retry in range(0, self.nr_retries + 1):
                     try:
                         self.logger.info(f"writing: {output_path}")
-                        output_ds.to_netcdf(output_path,encoding=encodings)
+                        output_ds.to_netcdf(output_path, encoding=encodings)
                         break
                     except Exception as ex:
                         self.logger.error(f"Error writing: {output_path} : {str(ex)}")
@@ -277,15 +285,20 @@ class Regrid:
                 return output_ds, encodings
 
 
-    def prepare_output_dataset(self):
+    def prepare_output_dataset(self, time_da=None):
         for (v, mode) in self.variables:
             if mode == "mean":
                 self.accumulated_means[v] = np.where(self.counts[v] > 0, self.accumulated_means[v]/self.counts[v], np.nan)
 
         output_ds = self.grid.copy()
+        if time_da is not None:
+            output_ds["time"] = time_da
+            dims = ("time", self.target_y_dim, self.target_x_dim)
+        else:
+            dims = (self.target_y_dim, self.target_x_dim)
         encodings = {}
-        for (v,mode) in self.variables:
 
+        for (v,mode) in self.variables:
             accumulated = None
             if mode == "mean":
                 accumulated = self.accumulated_means[v]
@@ -297,27 +310,33 @@ class Regrid:
                 accumulated = self.accumulated_nearest[v]
 
             output_variable = v+"_"+mode
-            da = xr.DataArray(data=accumulated,dims=(self.target_y_dim,self.target_x_dim),
-                              attrs=self.variable_attrs.get(v,None))
+            if time_da is not None:
+                accumulated = np.expand_dims(accumulated,axis=0)
+
+            da = xr.DataArray(data=accumulated,dims=dims,attrs=self.variable_attrs.get(v,None))
             output_ds[output_variable] = da
-            encodings[output_variable] = {"zlib": True, "complevel": 5, "dtype": "float32"}
+            encodings[output_variable] = {"zlib": True, "complevel": 5, "dtype": str(self.dtypes[v])}
 
             if mode == "mean":
                 # also output the counts
                 output_variable = v+"_counts"
-                da = xr.DataArray(data=self.counts[v], dims=(self.target_y_dim, self.target_x_dim))
+                arr = self.counts[v]
+                if time_da is not None:
+                    arr = np.expand_dims(arr,axis=0)
+                da = xr.DataArray(data=arr, dims=dims)
                 output_ds[output_variable] = da
-                encodings[output_variable] = {"zlib": True, "complevel": 5, "dtype": "float32"}
+                encodings[output_variable] = {"zlib": True, "complevel": 5, "dtype": "int32"}
 
         for (name,value) in self.dataset_attrs.items():
             output_ds.attrs[name] = value
         if self.compute_distances:
-            da = xr.DataArray(data=np.sqrt(np.where(self.closest_sq_distances < np.finfo(np.float32).max, self.closest_sq_distances, np.nan)), dims=(self.target_y_dim, self.target_x_dim),
-                              attrs={
-                                  "units": ""
-                              })
+            distances = np.sqrt(np.where(self.closest_sq_distances < np.finfo(np.float32).max, self.closest_sq_distances, np.nan))
+            if time_da is not None:
+               distances = np.expand_dims(distances,axis=0)
+            da = xr.DataArray(data=distances, dims=dims, attrs={ "units": "m"})
             output_ds["nearest_distance"] = da
             encodings["nearest_distance"] = {"zlib": True, "complevel": 5, "dtype": "float32"}
+
         output_ds.set_coords([self.target_y, self.target_x])
         return output_ds, encodings
 
