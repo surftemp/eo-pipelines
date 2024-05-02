@@ -53,8 +53,6 @@ class Regrid:
         self.target_x_dim = None
         self.target_y_dim = None
 
-        self.dtypes = {}
-
         self.accumulated_mins = {}
         self.accumulated_maxes = {}
         self.accumulated_means = {}
@@ -65,6 +63,8 @@ class Regrid:
 
         self.counts = {}  # mean only
         self.closest_sq_distances = None  # nearest only
+
+        self.dtypes = {}
 
         self.logger = logging.getLogger("Regrid")
 
@@ -97,8 +97,10 @@ class Regrid:
         if isinstance(self.input_ds,str):
             if os.path.isdir(self.input_ds):
                 input_file_paths = list(map(lambda f: os.path.join(self.input_ds,f),os.listdir(self.input_ds)))
-            else:
+            elif os.path.isfile(self.input_ds):
                 input_file_paths = [self.input_ds]
+            else:
+                raise Exception(f"input path {self.input_ds} is not an existing file or directory")
             output_individual_files = os.path.exists(self.output_path) and os.path.isdir(self.output_path)
         else:
             input_file_paths = [""]
@@ -110,14 +112,8 @@ class Regrid:
 
         if self.coarsen:
             self.grid = self.grid[{'nj': slice(None, None, self.coarsen), 'ni': slice(None, None, self.coarsen)}]
-        self.logger.info(self.grid)
 
-        # work out the indices on the target grid
-        target_y0 = float(self.grid[self.target_y][0])
-        target_yN = float(self.grid[self.target_y][-1])
-        target_x0 = float(self.grid[self.target_x][0])
-        target_xN = float(self.grid[self.target_x][-1])
-
+        # check target x and y are 1 dimensional
         if len(self.grid[self.target_x].shape) != 1:
             self.logger.error("target grid x variable should have only 1 dimension")
             sys.exit(-1)
@@ -126,6 +122,13 @@ class Regrid:
             self.logger.error("target grid y variable should have only 1 dimension")
             sys.exit(-1)
 
+        # work out the indices on the target grid
+        target_y0 = float(self.grid[self.target_y][0])
+        target_yN = float(self.grid[self.target_y][-1])
+        target_x0 = float(self.grid[self.target_x][0])
+        target_xN = float(self.grid[self.target_x][-1])
+
+        # get the target grid dimensions
         self.target_height = self.grid[self.target_y].shape[0]
         self.target_width = self.grid[self.target_x].shape[0]
 
@@ -175,9 +178,6 @@ class Regrid:
                     indices_nj = np.int32(np.round((self.target_height-1) * (y2d.data - target_y0)/(target_yN-target_y0)))
                     indices_ni = np.int32(np.round((self.target_width-1) * (x2d.data - target_x0)/(target_xN-target_x0)))
 
-                    print("indices_ni="+str(indices_ni))
-                    print("indices_nj="+str(indices_nj))
-
                     # set indices to (target_height,target_width) for points that lie outside the target grid
                     indices_nj = np.where(indices_nj < 0, self.target_height, indices_nj)
                     indices_nj = np.where(indices_nj >= self.target_height, self.target_height, indices_nj)
@@ -186,6 +186,13 @@ class Regrid:
 
                     indices_nj = xr.DataArray(indices_nj, dims=(source_y_dim, source_x_dim))
                     indices_ni = xr.DataArray(indices_ni, dims=(source_y_dim, source_x_dim))
+
+                    count = np.where(np.logical_or(indices_ni == self.target_width,  indices_nj == self.target_height),0,1).sum()
+                    self.logger.info(f"Found {count} intersecting pixels")
+
+                    if count == 0:
+                        self.logger.warning("No intersecting pixels, skipping")
+                        break
 
                     indices_by_slice = {}
 
@@ -200,8 +207,12 @@ class Regrid:
 
                     for (v,mode) in self.variables:
 
-                        self.dtypes[v] = ds[v].dtype
+                        if self.compute_distances:
+                            self.closest_sq_distances = np.zeros((self.target_height, self.target_width),
+                                                                 dtype="float32")
+                            self.closest_sq_distances[:, :] = np.finfo(np.float32).max
 
+                        self.dtypes[v] = ds[v].dtype
                         da = ds[v].squeeze()
 
                         if v not in self.variable_attrs:
@@ -271,6 +282,7 @@ class Regrid:
             idx += 1
 
         if not output_individual_files:
+            # output accumulated results from merging all input files
             output_ds, encodings = self.prepare_output_dataset()
             if self.output_path:
                 for retry in range(0, self.nr_retries + 1):
@@ -313,9 +325,12 @@ class Regrid:
             if time_da is not None:
                 accumulated = np.expand_dims(accumulated,axis=0)
 
+            encodings[output_variable] = {"zlib": True, "complevel": 5, "dtype": str(self.dtypes[v])}
+            if np.issubdtype(self.dtypes[v], np.integer):
+                encodings[output_variable]["_FillValue"] = -999
+
             da = xr.DataArray(data=accumulated,dims=dims,attrs=self.variable_attrs.get(v,None))
             output_ds[output_variable] = da
-            encodings[output_variable] = {"zlib": True, "complevel": 5, "dtype": str(self.dtypes[v])}
 
             if mode == "mean":
                 # also output the counts
@@ -325,7 +340,7 @@ class Regrid:
                     arr = np.expand_dims(arr,axis=0)
                 da = xr.DataArray(data=arr, dims=dims)
                 output_ds[output_variable] = da
-                encodings[output_variable] = {"zlib": True, "complevel": 5, "dtype": "int32"}
+                encodings[output_variable] = {"zlib": True, "complevel": 5, "dtype": "int32", "_FillValue":-999}
 
         for (name,value) in self.dataset_attrs.items():
             output_ds.attrs[name] = value
@@ -339,8 +354,6 @@ class Regrid:
 
         output_ds.set_coords([self.target_y, self.target_x])
         return output_ds, encodings
-
-
 
     def reset(self):
         self.dataset_attrs = {}
