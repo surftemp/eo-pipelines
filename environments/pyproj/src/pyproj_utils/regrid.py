@@ -69,7 +69,12 @@ class Regrid:
         self.logger = logging.getLogger("Regrid")
 
         self.compute_distances = False
-        for (v,mode) in self.variables:
+        output_names = set()
+        for (v,mode,output_name) in self.variables:
+            if output_name in output_names:
+                raise ValueError(f"output variables have duplicate names: {output_name}")
+            else:
+                output_names.add(output_name)
             if mode == "nearest":
                 if self.target_crs != 27700:
                     raise ValueError("Nearest neighbour currently only supported if the target CRS is 27700")
@@ -77,17 +82,25 @@ class Regrid:
 
     def decode_variable_mode(self, variable):
         splits = variable.split(":")
-        if len(splits) == 2:
+        output_name = ""
+        if len(splits) == 3:
             variable_name = splits[0]
             mode = splits[1]
-            if mode not in ["min","max","mean","nearest"]:
-                raise ValueError(f"Invalid mode {mode} for variable {variable}")
+            output_name = splits[2]
+        elif len(splits) == 2:
+            variable_name = splits[0]
+            mode = splits[1]
         elif len(splits) == 1:
             variable_name = variable
             mode = "nearest"
         else:
-            raise ValueError(f"Invalid variable directive: {variable} should be NAME or NAME:MODE")
-        return variable_name, mode
+            raise ValueError(
+                f"Invalid variable directive: {variable} should be INPUT_NAME or INPUT_NAME:MODE or INPUT_NAME:MODE:OUTPUT_NAME")
+        if mode not in ["min", "max", "mean", "nearest"]:
+            raise ValueError(f"Invalid mode {mode} for variable {variable}")
+        if output_name == "":
+            output_name = variable_name + "_" + mode
+        return variable_name, mode, output_name
 
     def run(self, limit=None):
         output_folder = os.path.split(self.output_path)[0]
@@ -205,7 +218,7 @@ class Regrid:
                             ix = indices_ni.isel(**s).data
                             indices_by_slice[(ys,xs)] = (s,iy,ix)
 
-                    for (v,mode) in self.variables:
+                    for (v,mode,_) in self.variables:
 
                         if self.compute_distances:
                             self.closest_sq_distances = np.zeros((self.target_height, self.target_width),
@@ -298,7 +311,7 @@ class Regrid:
 
 
     def prepare_output_dataset(self, time_da=None):
-        for (v, mode) in self.variables:
+        for (v, mode, _) in self.variables:
             if mode == "mean":
                 self.accumulated_means[v] = np.where(self.counts[v] > 0, self.accumulated_means[v]/self.counts[v], np.nan)
 
@@ -310,7 +323,7 @@ class Regrid:
             dims = (self.target_y_dim, self.target_x_dim)
         encodings = {}
 
-        for (v,mode) in self.variables:
+        for (v,mode,output_variable) in self.variables:
             accumulated = None
             if mode == "mean":
                 accumulated = self.accumulated_means[v]
@@ -321,7 +334,6 @@ class Regrid:
             elif mode == "nearest":
                 accumulated = self.accumulated_nearest[v]
 
-            output_variable = v+"_"+mode
             if time_da is not None:
                 accumulated = np.expand_dims(accumulated,axis=0)
 
@@ -370,7 +382,7 @@ class Regrid:
             self.closest_sq_distances = np.zeros((self.target_height,self.target_width),dtype="float32")
             self.closest_sq_distances[:,:] = np.finfo(np.float32).max
 
-        for (v,mode) in self.variables:
+        for (v,mode,output_name) in self.variables:
             if mode == "mean":
                 self.counts[v] = np.zeros((self.target_height, self.target_width))
                 self.accumulated_means[v] = np.zeros((self.target_height, self.target_width)) # will hold the sum initially
@@ -405,7 +417,7 @@ def main():
     parser.add_argument("--source-x", type=str, help="input x dimension variable nane", default="lon")
     parser.add_argument("--source-crs", type=int, help="source CRS", default=4326)
 
-    parser.add_argument("--variables", nargs="+", help="Specify variables to process, for nearest use NAME, for other modes (min,max,mean) use NAME:MODE")
+    parser.add_argument("--variables", nargs="+", help="Specify variables to process, for nearest use NAME, for other modes (min,max,mean) use NAME:MODE, to specify the output variable name use NAME:MODE:OUTPUT_NAME")
 
     parser.add_argument("--limit", type=int, help="process only this many scenes (for testing)", default=None)
     parser.add_argument("--stride", type=int, help="set the stride", default=4)
