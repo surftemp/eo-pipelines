@@ -28,6 +28,7 @@ import argparse
 import shutil
 import json
 import fnmatch
+import requests
 
 from cartopy_utils.netcdf2html.htmlfive.html5_builder import Html5Builder
 
@@ -36,6 +37,18 @@ from cartopy_utils.netcdf2html.fragments.image import save_image, save_image_fal
 
 js_path = os.path.join(os.path.split(__file__)[0],"index.js")
 css_path = os.path.join(os.path.split(__file__)[0],"index.css")
+
+def get_image_dimensions(ds):
+    if len(ds.lat.shape) == 2:
+        image_height = ds.lat.shape[0]
+        image_width = ds.lon.shape[1]
+    elif len(ds.lat.shape) == 1:
+        image_height = ds.lat.shape[0]
+        image_width = ds.lon.shape[1]
+    else:
+        raise Exception("Unable to determin image dimensions from dataset")
+    return (image_width, image_height)
+
 
 class LayerRGB:
 
@@ -81,21 +94,67 @@ class LayerSingleBand:
             a[:,i] = self.vmin + (i/legend_width) * (self.vmax-self.vmin)
         save_image(a, self.vmin, self.vmax, path, self.cmap_name)
 
+class LayerWMS:
+
+    def __init__(self, layer_name, layer_label, wms_url, scale):
+        self.layer_name = layer_name
+        self.layer_label = layer_label
+        self.wms_url = wms_url
+        self.cache = {}
+        self.failed = set()
+        self.scale = scale
+
+    def has_legend(self):
+        return False
+
+    def build(self,ds,path):
+        if os.path.exists(path):
+            os.remove(path)
+        image_width, image_height = get_image_dimensions(ds)
+        image_width *= self.scale
+        image_height *= self.scale
+        x_min = int(ds.x.min())
+        x_max = int(ds.x.max())
+        y_min = int(ds.y.min())
+        y_max = int(ds.y.max())
+        url = self.wms_url.replace("{WIDTH}",str(image_width)).replace("{HEIGHT}",str(image_height)) \
+            .replace("{YMIN}",str(y_min)).replace("{YMAX}",str(y_max)) \
+            .replace("{XMIN}",str(x_min)).replace("{XMAX}", str(x_max))
+
+        if url in self.cache:
+            os.symlink(self.cache[url],path)
+        elif url in self.failed:
+            pass
+        else:
+            print(url)
+            r = requests.get(url, stream=True)
+            if r.status_code == 200:
+                with open(path, 'wb') as f:
+                    r.raw.decode_content = True
+                    shutil.copyfileobj(r.raw, f)
+                self.cache[url] = path
+            else:
+                print("Failed")
+                self.failed.add(url)
+
 class LayerMask:
 
-    def __init__(self, layer_name, layer_label, band_name, r, g, b):
+    def __init__(self, layer_name, layer_label, band_name, r, g, b, mask):
         self.layer_name = layer_name
         self.layer_label = layer_label
         self.band_name = band_name
         self.r = r
         self.g = g
         self.b = b
+        self.mask = mask
 
     def has_legend(self):
         return False
 
     def build(self,ds,path):
-        da = ds[self.band_name]
+        da = ds[self.band_name].astype(int)
+        if self.mask:
+            da = da & self.mask
         save_image_mask(da.squeeze().data[:, :], path, self.r, self.g, self.b)
 
 
@@ -114,8 +173,8 @@ class Convert:
         self.layer_specs = []
         self.layer_definitions = []
 
-    def add_layer(self, name, type, args):
-        self.layer_specs.append((name,type,args))
+    def add_layer(self, name, label, type, args):
+        self.layer_specs.append((name,label,type,args))
 
     def collect_layers(self, time_slices):
         variable_names = set()
@@ -123,17 +182,17 @@ class Convert:
             for name in ds.variables:
                 variable_names.add(name)
 
-        for (name,type,args) in self.layer_specs:
+        for (name,label,type,args) in self.layer_specs:
 
             # if the name contains a wildcard, use it to match with one or more variable names in the data
             if "*" in name or "+" in name:
                 for variable_name in variable_names:
                     if fnmatch.fnmatch(variable_name,name):
-                        self.collect_layer(variable_name,type,args)
+                        self.collect_layer(variable_name,label+"-"+variable_name,type,args)
             else:
-                self.collect_layer(name,type,args)
+                self.collect_layer(name,label,type,args)
 
-    def collect_layer(self,name,layer_type,args):
+    def collect_layer(self,name,label,layer_type,args):
         if layer_type == "single":
             variable = args[0]
             if variable == "":
@@ -141,7 +200,7 @@ class Convert:
             min_value = float(args[1])
             max_value = float(args[2])
             cmap_name = args[3]
-            self.layer_definitions.append(LayerSingleBand(name,name,variable,min_value,max_value,cmap_name))
+            self.layer_definitions.append(LayerSingleBand(name,label,variable,min_value,max_value,cmap_name))
         elif layer_type == "mask":
             variable = args[0]
             if variable == "":
@@ -149,12 +208,17 @@ class Convert:
             r = int(args[1])
             g = int(args[2])
             b = int(args[3])
-            self.layer_definitions.append(LayerMask(name,name,variable,r,g,b))
+            mask = int(args[4]) if args[4] is not None else None
+            self.layer_definitions.append(LayerMask(name,label,variable,r,g,b,mask))
         elif layer_type == "rgb":
             red_variable = args[0]
             green_variable = args[1]
             blue_variable = args[2]
-            self.layer_definitions.append(LayerRGB(name,name,red_variable,green_variable,blue_variable))
+            self.layer_definitions.append(LayerRGB(name,label,red_variable,green_variable,blue_variable))
+        elif layer_type == "wms":
+            url = args[0]
+            scale = args[1]
+            self.layer_definitions.append(LayerWMS(name, label, url, scale))
         else:
             print(f"Unable to add layer of type {layer_type}")
 
@@ -166,18 +230,19 @@ class Convert:
 
     def run(self):
         time_slices = []
-        image_width = None
+        image_width = image_height = None
         if os.path.isdir(self.input_path):
             for filename in os.listdir(self.input_path):
                 if filename.endswith(".nc"):
                     ds = xr.open_dataset(os.path.join(self.input_path, filename))
                     timestamp = str(ds["time"].data[0])[:10]
                     time_slices.append((timestamp, ds))
-                    image_width = ds.lat.shape[0]
+                    image_width, image_height = get_image_dimensions(ds)
+
             time_slices = sorted(time_slices, key=lambda item: item[0])
         else:
             ds = xr.open_dataset(self.input_path)
-            image_width = ds.lat.shape[0]
+            image_width, image_height = get_image_dimensions(ds)
             tlen = len(ds["time"])
             for t in range(tlen):
                 timestamp = str(ds["time"].data[t])[:10]
@@ -191,6 +256,8 @@ class Convert:
         builder.head().add_element("style").add_text(anti_aliasing_style)
         builder.head().add_element("script",{"src":"index.js"})
         builder.head().add_element("link", {"rel": "stylesheet", "href":"index.css"})
+        builder.head().add_element("link", {"rel": "stylesheet", "href": "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"})
+        builder.head().add_element("script", {"src": "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"})
 
         initial_zoom = 768 / image_width
         if initial_zoom < 1:
@@ -226,6 +293,7 @@ class Convert:
             "Show Filters")
 
         controls_div = root.add_element("div",{"id": "layer_container", "class":"control_container"})
+        controls_div.add_element("div", {"id": "layer_container_header", "class": "control_container_header"}).add_text("Layers")
 
         slider_fieldset = controls_div.add_element("fieldset", style={"display":"inline"})
         slider_fieldset.add_element("legend").add_text("Layers")
@@ -251,11 +319,12 @@ class Convert:
                 col3.add_element("span").add_text(str(layer_definition.vmax))
 
         filter_div = root.add_element("div", {"id": "filter_container", "class": "control_container"})
+        filter_div.add_element("div",{"id": "filter_container_header", "class":"control_container_header"}).add_text("Scene Filters")
 
         filter_fieldset = filter_div.add_element("fieldset", style={"display": "inline"})
         filter_fieldset.add_element("legend").add_text("Filters")
 
-        month_filter = filter_fieldset.add_element("div", {"class": "control_container"})
+        month_filter = filter_fieldset.add_element("div", {})
 
         for month in range(0, 12):
             month_name = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][month]
@@ -314,7 +383,7 @@ def main():
     if args.layers:
         for layer_spec in args.layers:
             comps = layer_spec.split(":")
-            c.add_layer(comps[0],comps[1],tuple(comps[2:]))
+            c.add_layer(comps[0],comps[1],comps[2],tuple(comps[3:]))
 
     if args.layer_config_path:
         with open(args.layer_config_path) as f:
@@ -322,23 +391,29 @@ def main():
             for (layer_name,layer) in layer_specs.items():
 
                 layer_type = layer["type"]
+                layer_label = layer.get("label",layer_name)
                 if layer_type == "single":
                     layer_band = layer.get("band", "")
                     vmin = layer["min_value"]
                     vmax = layer["max_value"]
                     cmap = layer.get("cmap", "coolwarm")
-                    c.add_layer(layer_name,"single",(layer_band,vmin,vmax,cmap))
+                    c.add_layer(layer_name,layer_label,"single",(layer_band,vmin,vmax,cmap))
                 elif layer_type == "mask":
                     layer_band = layer.get("band", "")
                     r = layer["r"]
                     g = layer["g"]
                     b = layer["b"]
-                    c.add_layer(layer_name,"mask",(layer_band,r,g,b))
+                    mask = layer.get("mask",None)
+                    c.add_layer(layer_name,layer_label,"mask",(layer_band,r,g,b,mask))
                 elif layer_type == "rgb":
                     red_band = layer["red_band"]
                     green_band = layer["green_band"]
                     blue_band = layer["blue_band"]
-                    c.add_layer(layer_name,"rgb",(red_band,green_band,blue_band))
+                    c.add_layer(layer_name,layer_label,"rgb",(red_band,green_band,blue_band))
+                elif layer_type == "wms":
+                    url = layer["url"]
+                    scale = layer.get("scale",1)
+                    c.add_layer(layer_name,layer_label,"wms",(url,scale))
 
 
     c.run()

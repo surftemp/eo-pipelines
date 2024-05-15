@@ -160,7 +160,45 @@ function boot() {
    });
 }
 
+function setup_drag(elt, header_elt) {
+  var startx, starty, dx, dy;
+
+  var top = elt.offsetTop;
+  var left = elt.offsetLeft;
+
+  header_elt.onmousedown = start_drag;
+
+  function start_drag(e) {
+    e.preventDefault();
+    startx = e.clientX;
+    starty = e.clientY;
+    document.onmouseup = close_drag;
+    document.onmousemove = move_drag;
+  }
+
+  function move_drag(e) {
+    e.preventDefault();
+
+    dx = startx - e.clientX;
+    dy = starty - e.clientY;
+    startx = e.clientX;
+    starty = e.clientY;
+
+    top = top - dy;
+    left = left - dx;
+
+    elt.style.top = top + "px";
+    elt.style.left = left + "px";
+  }
+
+  function close_drag() {
+    document.onmouseup = null;
+    document.onmousemove = null;
+  }
+}
+
 window.addEventListener("load", (ect) => {
    boot();
+   setup_drag(document.getElementById("layer_container"),document.getElementById("layer_container_header"));
+   setup_drag(document.getElementById("filter_container"),document.getElementById("filter_container_header"));
 });
-

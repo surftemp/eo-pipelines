@@ -12,6 +12,19 @@
 .control_container {
     margin-top: 5px;
     margin-bottom: 5px;
+    position: fixed;
+    z-index: 9;
+    background-color: #f1f1f1;
+    border: 1px solid #d3d3d3;
+    text-align: center;
+}
+
+.control_container_header {
+  padding: 10px;
+  cursor: move;
+  z-index: 10;
+  background-color: #2196F3;
+  color: #fff;
 }
 
 .sccene_label {

@@ -44,7 +44,7 @@ class Netcdf2Html(PipelineStage):
         parameters = {}
         title = self.get_configuration().get("title","")
         if title:
-            parameters["TITLE"] = title
+            parameters["TITLE"] = str(title)
         return parameters
 
     def execute_stage(self, inputs):
