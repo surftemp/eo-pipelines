@@ -1,0 +1,41 @@
+{
+  "CLOUD_MASK": {
+    "label": "Basic Cloud Mask (8)",
+    "type": "mask",
+    "band": "QA_PIXEL",
+    "mask": 8,
+    "r": 255,
+    "g": 255,
+    "b": 255
+  },
+  "ALL_CLOUD_MASK": {
+    "label": "Extended Cloud Mask (30)",
+    "type": "mask",
+    "band": "QA_PIXEL",
+    "mask": 30,
+    "r": 150,
+    "g": 150,
+    "b": 150
+  },
+  "ST": {
+    "label": "Surface Temperature",
+    "type": "single",
+    "band": "ST",
+    "min_value": 240,
+    "max_value": 280
+  },
+  "REF": {
+    "label": "Reflectance",
+    "type": "rgb",
+    "red_band": "B4",
+    "green_band": "B3",
+    "blue_band": "B2"
+  },
+
+  "OSM": {
+    "label": "Open Street Map",
+    "type": "wms",
+    "scale": 1,
+    "url": "https://eocis.org/mapproxy/service?service=WMS&request=GetMap&layers=osm&styles=&format=image%2Fpng&transparent=false&version=1.1.1&width={WIDTH}&height={HEIGHT}&srs=EPSG%3A27700&bbox={XMIN},{YMIN},{XMAX},{YMAX}"
+  }
+}

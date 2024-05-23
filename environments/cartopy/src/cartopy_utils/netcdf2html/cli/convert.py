@@ -30,6 +30,8 @@ import json
 import fnmatch
 import requests
 
+from layers import LayerFactory
+
 from cartopy_utils.netcdf2html.htmlfive.html5_builder import Html5Builder
 
 from cartopy_utils.netcdf2html.fragments.utils import anti_aliasing_style
@@ -50,177 +52,24 @@ def get_image_dimensions(ds):
     return (image_width, image_height)
 
 
-class LayerRGB:
-
-    def __init__(self, layer_name, layer_label, red_variable, green_variable, blue_variable):
-        self.layer_name = layer_name
-        self.layer_label = layer_label
-        self.red_variable = red_variable
-        self.green_variable = green_variable
-        self.blue_variable = blue_variable
-
-    def has_legend(self):
-        return False
-
-    def build(self,ds,path):
-        red = ds[self.red_variable].squeeze().data[:, :]
-        green = ds[self.green_variable].squeeze().data[:, :]
-        blue = ds[self.blue_variable].squeeze().data[:, :]
-
-        save_image_falsecolour(red, green, blue, path)
-
-
-class LayerSingleBand:
-
-    def __init__(self, layer_name, layer_label, band_name, vmin, vmax, cmap_name):
-        self.layer_name = layer_name
-        self.layer_label = layer_label
-        self.band_name = band_name
-        self.vmin = vmin
-        self.vmax = vmax
-        self.cmap_name = cmap_name
-
-    def build(self,ds,path):
-        da = ds[self.band_name]
-        save_image(da.squeeze().data[:, :], self.vmin, self.vmax, path, self.cmap_name)
-
-    def has_legend(self):
-        return True
-
-    def build_legend(self, path):
-        legend_width, legend_height = 200, 20
-        a = np.zeros(shape=(legend_height,legend_width))
-        for i in range(0,legend_width):
-            a[:,i] = self.vmin + (i/legend_width) * (self.vmax-self.vmin)
-        save_image(a, self.vmin, self.vmax, path, self.cmap_name)
-
-class LayerWMS:
-
-    def __init__(self, layer_name, layer_label, wms_url, scale):
-        self.layer_name = layer_name
-        self.layer_label = layer_label
-        self.wms_url = wms_url
-        self.cache = {}
-        self.failed = set()
-        self.scale = scale
-
-    def has_legend(self):
-        return False
-
-    def build(self,ds,path):
-        if os.path.exists(path):
-            os.remove(path)
-        image_width, image_height = get_image_dimensions(ds)
-        image_width *= self.scale
-        image_height *= self.scale
-        x_min = int(ds.x.min())
-        x_max = int(ds.x.max())
-        y_min = int(ds.y.min())
-        y_max = int(ds.y.max())
-        url = self.wms_url.replace("{WIDTH}",str(image_width)).replace("{HEIGHT}",str(image_height)) \
-            .replace("{YMIN}",str(y_min)).replace("{YMAX}",str(y_max)) \
-            .replace("{XMIN}",str(x_min)).replace("{XMAX}", str(x_max))
-
-        if url in self.cache:
-            os.symlink(self.cache[url],path)
-        elif url in self.failed:
-            pass
-        else:
-            print(url)
-            r = requests.get(url, stream=True)
-            if r.status_code == 200:
-                with open(path, 'wb') as f:
-                    r.raw.decode_content = True
-                    shutil.copyfileobj(r.raw, f)
-                self.cache[url] = path
-            else:
-                print("Failed")
-                self.failed.add(url)
-
-class LayerMask:
-
-    def __init__(self, layer_name, layer_label, band_name, r, g, b, mask):
-        self.layer_name = layer_name
-        self.layer_label = layer_label
-        self.band_name = band_name
-        self.r = r
-        self.g = g
-        self.b = b
-        self.mask = mask
-
-    def has_legend(self):
-        return False
-
-    def build(self,ds,path):
-        da = ds[self.band_name].astype(int)
-        if self.mask:
-            da = da & self.mask
-        save_image_mask(da.squeeze().data[:, :], path, self.r, self.g, self.b)
-
 
 class Convert:
 
-    def __init__(self, input_path, output_folder, title):
+    def __init__(self, input_path, output_folder, title, max_zoom=None):
         self.input_path = input_path
         self.input_filename = os.path.split(self.input_path)[1]
         self.output_folder = output_folder
         self.title = title
+        self.max_zoom = max_zoom
         self.output_html_path = os.path.join(output_folder,"index.html")
         image_folder = os.path.join(self.output_folder,"images")
         os.makedirs(image_folder,exist_ok=True)
         shutil.copyfile(js_path,os.path.join(self.output_folder,"index.js"))
         shutil.copyfile(css_path, os.path.join(self.output_folder, "index.css"))
-        self.layer_specs = []
         self.layer_definitions = []
 
-    def add_layer(self, name, label, type, args):
-        self.layer_specs.append((name,label,type,args))
-
-    def collect_layers(self, time_slices):
-        variable_names = set()
-        for (_,ds) in time_slices:
-            for name in ds.variables:
-                variable_names.add(name)
-
-        for (name,label,type,args) in self.layer_specs:
-
-            # if the name contains a wildcard, use it to match with one or more variable names in the data
-            if "*" in name or "+" in name:
-                for variable_name in variable_names:
-                    if fnmatch.fnmatch(variable_name,name):
-                        self.collect_layer(variable_name,label+"-"+variable_name,type,args)
-            else:
-                self.collect_layer(name,label,type,args)
-
-    def collect_layer(self,name,label,layer_type,args):
-        if layer_type == "single":
-            variable = args[0]
-            if variable == "":
-                variable = name # assume variable is the same as the name if not specified
-            min_value = float(args[1])
-            max_value = float(args[2])
-            cmap_name = args[3]
-            self.layer_definitions.append(LayerSingleBand(name,label,variable,min_value,max_value,cmap_name))
-        elif layer_type == "mask":
-            variable = args[0]
-            if variable == "":
-                variable = name # assume variable is the same as the name if not specified
-            r = int(args[1])
-            g = int(args[2])
-            b = int(args[3])
-            mask = int(args[4]) if args[4] is not None else None
-            self.layer_definitions.append(LayerMask(name,label,variable,r,g,b,mask))
-        elif layer_type == "rgb":
-            red_variable = args[0]
-            green_variable = args[1]
-            blue_variable = args[2]
-            self.layer_definitions.append(LayerRGB(name,label,red_variable,green_variable,blue_variable))
-        elif layer_type == "wms":
-            url = args[0]
-            scale = args[1]
-            self.layer_definitions.append(LayerWMS(name, label, url, scale))
-        else:
-            print(f"Unable to add layer of type {layer_type}")
+    def add_layer(self, ds, name, spec):
+        self.layer_definitions += LayerFactory.create(ds,name,spec)
 
     def get_image_path(self, key, timestamp=""):
         filename = key+timestamp+".png"
@@ -248,7 +97,6 @@ class Convert:
                 timestamp = str(ds["time"].data[t])[:10]
                 time_slices.append((timestamp, ds.isel(time=slice(t, t + 1))))
 
-        self.collect_layers(time_slices)
 
         builder = Html5Builder(language="en")
 
@@ -262,7 +110,10 @@ class Convert:
         initial_zoom = 768 / image_width
         if initial_zoom < 1:
             initial_zoom = 1
-        max_zoom = 2048 / image_width
+        if self.max_zoom and self.max_zoom > initial_zoom:
+            max_zoom = self.max_zoom
+        else:
+            max_zoom = 2048 / image_width
 
         root = builder.body().add_element("div")
         header_div = root.add_element("div")
@@ -373,48 +224,30 @@ def main():
     parser.add_argument("--title", help="set the title of the plot", required=True)
     parser.add_argument("--input-path", help="netcdf4 file or folder containing netcdf4 files to visualise", required=True)
     parser.add_argument("--output-path", help="folder to write html output", default="html_output")
-    parser.add_argument("--layers", nargs="*", help="JSON file specifying one or more layer specifications")
-    parser.add_argument("--layer-config-path", help="JSON file specifying one or more layer specifications")
+    parser.add_argument("--layer-config-path", help="JSON file specifying one or more layer specifications", default="layers.json")
+    parser.add_argument("--max-zoom", type=int, default=None, help="set the maximum zoom (ignored if this would result in an image size of less than 768 pixels)")
 
     args = parser.parse_args()
 
-    c = Convert(args.input_path, os.path.abspath(args.output_path), args.title)
+    c = Convert(args.input_path, os.path.abspath(args.output_path), args.title, max_zoom=args.max_zoom)
 
-    if args.layers:
-        for layer_spec in args.layers:
-            comps = layer_spec.split(":")
-            c.add_layer(comps[0],comps[1],comps[2],tuple(comps[3:]))
+    variable_names = set()
+    ds = None
+    if os.path.isfile(args.input_path):
+        ds = xr.open_dataset(args.input_path)
+    elif os.path.isdir(args.input_path):
+        for name in os.listdir(args.input_path):
+            if name.endswith(".nc"):
+                ds = xr.open_dataset(os.path.join(args.input_path,name))
+                break
+    if ds:
+        for name in ds.variables:
+            variable_names.add(name)
 
-    if args.layer_config_path:
-        with open(args.layer_config_path) as f:
-            layer_specs = json.loads(f.read())
-            for (layer_name,layer) in layer_specs.items():
-
-                layer_type = layer["type"]
-                layer_label = layer.get("label",layer_name)
-                if layer_type == "single":
-                    layer_band = layer.get("band", "")
-                    vmin = layer["min_value"]
-                    vmax = layer["max_value"]
-                    cmap = layer.get("cmap", "coolwarm")
-                    c.add_layer(layer_name,layer_label,"single",(layer_band,vmin,vmax,cmap))
-                elif layer_type == "mask":
-                    layer_band = layer.get("band", "")
-                    r = layer["r"]
-                    g = layer["g"]
-                    b = layer["b"]
-                    mask = layer.get("mask",None)
-                    c.add_layer(layer_name,layer_label,"mask",(layer_band,r,g,b,mask))
-                elif layer_type == "rgb":
-                    red_band = layer["red_band"]
-                    green_band = layer["green_band"]
-                    blue_band = layer["blue_band"]
-                    c.add_layer(layer_name,layer_label,"rgb",(red_band,green_band,blue_band))
-                elif layer_type == "wms":
-                    url = layer["url"]
-                    scale = layer.get("scale",1)
-                    c.add_layer(layer_name,layer_label,"wms",(url,scale))
-
+    with open(args.layer_config_path) as f:
+        layer_specs = json.loads(f.read())
+        for (layer_name,layer) in layer_specs.items():
+            c.add_layer(layer_name,layer,variable_names)
 
     c.run()
 

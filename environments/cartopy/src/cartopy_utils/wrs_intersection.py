@@ -115,4 +115,7 @@ if __name__ == '__main__':
         for line in filtered_lines:
             of.write(line)
 
-    print(f"Filtered {len(filtered_lines)/input_count}")
+    if input_count > 0:
+        print(f"Filtered {len(filtered_lines)/input_count}")
+    else:
+        print("No input scenes were read")

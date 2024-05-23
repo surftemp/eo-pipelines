@@ -150,6 +150,8 @@ class Regrid:
 
         self.reset()
 
+        first_file = True
+
         for input_file_path in input_file_paths:
             complete = False
             for retry in range(0,self.nr_retries+1):
@@ -159,6 +161,17 @@ class Regrid:
                     self.logger.info(f"processing: {input_file_name} {idx}/{total}")
 
                     ds = xr.open_dataset(input_file_path) if input_file_path else self.input_ds
+
+                    if first_file:
+                        # fiter out variables not present in the first input file
+                        idx = len(self.variables)-1
+                        while idx >= 0:
+                            (v, mode, output_variable) = self.variables[idx]
+                            if v not in ds:
+                                self.logger.warning(f"excluding variable directive {v}:{mode}:{output_variable} as {v} not present in {input_file_name}")
+                                self.variables = self.variables[:idx]+self.variables[idx+1:]
+                            idx -= 1
+                        first_file = False
 
                     time_da = None
                     if "time" in ds:
