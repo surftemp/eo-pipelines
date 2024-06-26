@@ -103,6 +103,9 @@ class GroupProcessor:
 
     def process_groups(self):
         group_index = 0
+
+        rename = self.input_spec.get("rename",{})
+
         for group in self.groups:
 
             group_index += 1
@@ -128,6 +131,8 @@ class GroupProcessor:
 
                 for path in paths:
                     ds = xr.open_dataset(path)
+                    if dataset in rename:
+                        ds = ds.rename_vars(rename[dataset])
 
                     # FIXME extend the first file we come across to create the output
                     # this is not ideal as we may carry across more information than we need

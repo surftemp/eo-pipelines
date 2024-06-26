@@ -47,6 +47,14 @@ class Netcdf2Html(PipelineStage):
             parameters["TITLE"] = str(title)
         return parameters
 
+    def build_options(self):
+        options = ""
+        for option in ["netcdf-download-filename","sample-count","sample-cases"]:
+            option_value = self.get_configuration().get(option,"")
+            if option_value:
+                options += f' --{option} "{option_value}"'
+        return options
+
     def execute_stage(self, inputs):
 
         executor = self.create_executor()
@@ -60,10 +68,12 @@ class Netcdf2Html(PipelineStage):
 
         import json
         with open(layer_config_path,"w") as f:
-            f.write(json.dumps(self.get_configuration().get("layers")))
+            f.write(json.dumps(self.get_configuration().get("specification")))
 
         if self.output_folder:
             os.makedirs(self.output_folder,exist_ok=True)
+
+        options = self.build_options()
 
         for input in inputs["input"]:
 
@@ -90,16 +100,14 @@ class Netcdf2Html(PipelineStage):
                     custom_env = {
                         "INPUT_PATH": input_path,
                         "OUTPUT_PATH": output_path,
-                        "LAYER_CONFIG_PATH": layer_config_path
+                        "LAYER_CONFIG_PATH": layer_config_path,
+                        "OPTIONS": options
                     }
 
                     custom_env.update(self.get_parameters())
 
                     if "TITLE" not in custom_env:
                         custom_env["TITLE"] = filename_root
-
-                    import json
-                    print(json.dumps(custom_env))
 
                     task_id = executor.queue_task(self.get_stage_id(),script, custom_env, self.get_working_directory(),
                                                   description=dataset)

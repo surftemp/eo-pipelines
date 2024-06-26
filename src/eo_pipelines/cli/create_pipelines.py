@@ -23,6 +23,7 @@
 import csv
 import os
 import argparse
+from mako.template import Template
 
 
 def main():
@@ -38,7 +39,7 @@ def main():
     args = parser.parse_args()
 
     with open(args.template_path) as f:
-        template = f.read()
+        template = Template(f.read())
 
     job_script_template = None
     job_script_filename = None
@@ -81,10 +82,11 @@ def main():
 
                 filename = os.path.join(folder,"pipeline.yaml")
                 with open(filename,"w") as of:
-                    s = template.replace("{working_directory}",os.path.abspath(folder))
+                    d = {"working_directory":os.path.abspath(folder)}
                     for key in cols:
                         v = line[cols[key]]
-                        s = s.replace("{"+key+"}",v)
+                        d[key] = v
+                    s = template.render(**d)
                     of.write(s)
 
         print(f"Created {pid} pipelines under {args.output_folder}")

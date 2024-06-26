@@ -1,24 +1,20 @@
 # eo-pipelines
 
-Define and run pipelines to process Earth Observation (EO) data.  
-
-This project main focus has been on processing Landsat imagery.
+Define and run pipelines to process Earth Observation (EO) data.
 
 ## Installation
 
 create a conda environment called `eo_pipelines_env` using:
 
 ```
-conda env create -f eo_pipelines_env.yml
+conda create -n eo_pipelines_env python=3.10 Mako
 ```
 
 ## Dependencies
 
-Requires the hyrrokkin, usgs, landsat_importer and pyjob libraries
+The following dependencies need to be installed: hyrrokkin, pyjob libraries
 
 - https://github.com/surftemp/pyjob
-- https://github.com/surftemp/usgs
-- https://github.com/surftemp/landsat_importer
 - https://github.com/visualtopology/hyrrokkin
 
 ## Defining Pipelines
@@ -50,7 +46,7 @@ configuration:
       conda_path: /home/users/myuser/miniconda3/bin/conda
       shell: "/bin/bash"
       echo_stdout: True
-      tracking_database_path: /tmp/tracking.db # path to a database that is used to record task execution statistics
+      tracking_database_path: /tmp/tracking.db # optional - path to a database that is used to record task execution statistics
 ```
 
 Following the configuration, each stage in the pipeline is described
@@ -113,7 +109,7 @@ On execution the directory structure will be created:
 
 Each node is defined by a `properties` section which is divided into `configuration` and `executor_settings`
 
-* `properties` -> `configutation`
+* `properties` -> `configuration`
 
 In this section, parameters that are passed to the node are defined.  In the example above, nodes `n1` and `n2` are both configured with an `output_path`
 parameter which controls where the node's output files are written.
@@ -185,7 +181,7 @@ conda activate eo_pipelines_env
 nohup run_pipeline <path-to-pipeline-yaml-file> &
 ```
 
-## Running mulitple pipelines
+## Running multiple pipelines
 
 To run a set of pipelines (pipelines are executed in series):
 
@@ -201,7 +197,7 @@ A tool is provided for preparing a set of pipelines from a template and a CSV fi
 create_pipelines pipeline_template.yaml parameters.csv /tmp/pipelines
 ```
 
-where pipeline_template.yaml is a pipeline with template parameters surrounded by curly brackets
+where pipeline_template.yaml is a pipeline with template parameters surrounded by dollar+curly brackets
 
 ```
 nodes:
@@ -212,8 +208,8 @@ nodes:
       executor_settings:
         can_skip: true
       configuration:
-        row: {row}
-        path: {path}
+        row: ${row}
+        path: ${path}
         months: [6]
 ...
 ```
@@ -227,6 +223,8 @@ row,path
 26,201
 18,209
 ```
+
+The templating engine used is Mako (for more information see https://docs.makotemplates.org/en/latest/ and https://devhints.io/mako)
 
 running the tool will create the following directory structure
 

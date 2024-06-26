@@ -44,10 +44,12 @@ class Group(PipelineStage):
     def get_parameters(self):
         all_datasets = self.get_spec().get_datasets()
         dataset_bands = {dataset: self.get_spec().get_bands_for_dataset(dataset) for dataset in all_datasets}
-        return { "DATASET_BANDS": dataset_bands, "OUTPUT_PATH": self.output_path }
+        rename = self.get_configuration().get("rename", {})
+        return { "DATASET_BANDS": dataset_bands, "OUTPUT_PATH": self.output_path, "RENAME": rename}
 
     def execute_stage(self, inputs):
 
+        parameters = self.get_parameters()
         output_paths = {}
         for input_scenes in inputs["input"]:
 
@@ -59,7 +61,8 @@ class Group(PipelineStage):
             grouping_spec_file_path = os.path.join(self.get_working_directory(),"grouping_spec.json")
             grouping_spec = {
                 "datasets": input_scenes,
-                "bands": self.get_parameters()["DATASET_BANDS"]
+                "bands": parameters["DATASET_BANDS"],
+                "rename": parameters["RENAME"]
             }
             with open(grouping_spec_file_path,"w") as f:
                 f.write(json.dumps(grouping_spec))

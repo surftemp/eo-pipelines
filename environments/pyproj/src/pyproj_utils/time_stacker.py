@@ -38,6 +38,8 @@ class TimeStacker:
         self.batch_size = batch_size
         self.remove_attributes = remove_attributes
         self.logger = logging.getLogger("TimeStacker")
+        self.retry_count = 3
+        self.retry_delay_s = 10
 
     def run(self):
 
@@ -86,27 +88,34 @@ class TimeStacker:
             count = len(data.variables["time"])
             while pos < len(filenames) and append_count < self.batch_size:
                 # append a file to the output
-                filename = filenames[pos]
-                add_data = netCDF4.Dataset(filename)
-                if len(add_data.variables["time"]) != 1:
-                    raise RuntimeError(f"Can only append files with time dimension of size 1: {filename}")
-                for (variable, dims) in append_variables:
-                    # append each variable
-                    lh_lookup = []
-                    rh_lookup = []
-                    for d in dims:
-                        if d == "time":
-                            lh_lookup.append(count)
-                            rh_lookup.append(0)
-                        else:
-                            lh_lookup.append(slice(0, None))
-                            rh_lookup.append(slice(0, None))
+                for i in range(self.retry_count):
+                    try:
+                        filename = filenames[pos]
+                        add_data = netCDF4.Dataset(filename)
+                        if len(add_data.variables["time"]) != 1:
+                            raise RuntimeError(f"Can only append files with time dimension of size 1: {filename}")
+                        for (variable, dims) in append_variables:
+                            # append each variable
+                            lh_lookup = []
+                            rh_lookup = []
+                            for d in dims:
+                                if d == "time":
+                                    lh_lookup.append(count)
+                                    rh_lookup.append(0)
+                                else:
+                                    lh_lookup.append(slice(0, None))
+                                    rh_lookup.append(slice(0, None))
 
-                    data.variables[variable][tuple(lh_lookup)] = add_data.variables[variable][tuple(rh_lookup)]
-                count += 1
-                append_count += 1
-                pos += 1
-
+                            data.variables[variable][tuple(lh_lookup)] = add_data.variables[variable][tuple(rh_lookup)]
+                    except Exception:
+                        self.logger.exception("error adding {filename} retry {i+1}/{self.retry_count}")
+                        time.sleep(self.retry_delay_s)
+                        continue
+                    self.logger.exception("added {filename}")
+                    count += 1
+                    append_count += 1
+                    pos += 1
+                    break
             if append_count > 0:
                 data.close()
                 duration = int(time.time() - start_time)

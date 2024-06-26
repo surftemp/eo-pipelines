@@ -183,6 +183,23 @@
             },
             "classname": "nodes.add_masks.AddMasks"
         },
+        "add_spatial": {
+            "metadata": {
+                "name": "AddSpatial",
+                "description": "Add spatial data from netcdf file"
+            },
+            "input_ports": {
+                "input": {
+                    "link_type": "eo_pipelines:netcdf_sceneset"
+                }
+            },
+            "output_ports": {
+                "output": {
+                    "link_type": "eo_pipelines:netcdf_sceneset"
+                }
+            },
+            "classname": "nodes.add_spatial.AddSpatial"
+        },
         "netcdf2html": {
             "metadata": {
                 "name": "netcdf2HTML",
