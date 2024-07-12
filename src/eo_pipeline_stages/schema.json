@@ -213,6 +213,23 @@
             "output_ports": {
             },
             "classname": "nodes.netcdf2html.Netcdf2Html"
+        },
+        "metadata_tweaker": {
+            "metadata": {
+                "name": "metadata tweaker",
+                "description": "Tweak the metadata of netcdf files"
+            },
+            "input_ports": {
+                "input": {
+                    "link_type": "eo_pipelines:netcdf_sceneset"
+                }
+            },
+            "output_ports": {
+                "output": {
+                    "link_type": "eo_pipelines:netcdf_sceneset"
+                }
+            },
+            "classname": "nodes.metadata_tweaker.MetadataTweaker"
         }
     },
     "link_types": {

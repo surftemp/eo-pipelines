@@ -41,7 +41,7 @@ class Group:
         self.scenes_by_dataset[dataset] = [scene_path]
 
     def get_scenes_for_dataset(self, dataset):
-        return self.scenes_by_dataset.get(dataset, [])
+        return sorted(self.scenes_by_dataset.get(dataset, []))
 
     def extend(self, dt, dataset, scene_path):
         include = False
@@ -87,6 +87,7 @@ class GroupProcessor:
         for (dataset, folder) in datasets.items():
             for filename in os.listdir(folder):
                 path = os.path.join(folder, filename)
+                self.logger.info(f"find_groups opening: {path}")
                 if not path.endswith(".nc"):
                     continue
                 with xr.open_dataset(path) as ds:
@@ -98,6 +99,7 @@ class GroupProcessor:
                         break
                 if not added:
                     self.groups.append(Group(dt, dt, dataset, path))
+                    self.logger.info(f"Creating group: {len(self.groups)}")
 
         self.logger.info("Found %d groups:" % len(self.groups))
 
@@ -125,46 +127,47 @@ class GroupProcessor:
             if not valid_group:
                 continue
 
-            processing_levels = set()
-            for dataset in datasets:
-                paths = group.get_scenes_for_dataset(dataset)
+            try:
+                processing_levels = set()
+                for dataset in datasets:
 
-                for path in paths:
-                    ds = xr.open_dataset(path)
-                    if dataset in rename:
-                        ds = ds.rename_vars(rename[dataset])
+                    paths = group.get_scenes_for_dataset(dataset)
+                    # paths will be sorted by filename, then later values take priority
+                    for path in paths:
+                        ds = xr.open_dataset(path)
+                        if dataset in rename:
+                            ds = ds.rename_vars(rename[dataset])
 
-                    # FIXME extend the first file we come across to create the output
-                    # this is not ideal as we may carry across more information than we need
-                    if combined_ds is None:
-                        combined_ds = ds
-                        combined_filename = os.path.split(path)[1]
-                        combined_ds.attrs["time_coverage_start"] = date_format(group.start_dt)
-                        combined_ds.attrs["time_coverage_end"] = date_format(group.end_dt)
-                    else:
-                        # check that lats and lons match up
-                        for coords in ["lat", "lon"]:
-                            npt.assert_equal(ds[coords].values, combined_ds[coords].values)
-                        processing_levels.add(ds.attrs["processing_level"])
-                        for v in ds.data_vars:
-                            if v not in combined_ds:
-                                combined_ds[v] = ds[v]
-                            else:
-                                a = combined_ds[v].values
-                                if v.startswith("QA"):
-                                    a = np.where(a == 1, ds[v].values, a)
+                        # FIXME extend the first file we come across to create the output
+                        # this is not ideal as we may carry across more information than we need
+                        if combined_ds is None:
+                            combined_ds = ds
+                            combined_filename = os.path.split(path)[1]
+                            combined_ds.attrs["time_coverage_start"] = date_format(group.start_dt)
+                            combined_ds.attrs["time_coverage_end"] = date_format(group.end_dt)
+                        else:
+                            # check that lats and lons match up
+                            for coords in ["lat", "lon"]:
+                                npt.assert_equal(ds[coords].values, combined_ds[coords].values)
+                            processing_levels.add(ds.attrs["processing_level"])
+                            for v in ds.data_vars:
+                                if v not in combined_ds:
+                                    combined_ds[v] = ds[v]
                                 else:
+                                    a = combined_ds[v].values
                                     a = np.where(np.isnan(a), ds[v].values, a)
-                                combined_ds[v].data = a
-                        ds.close()
+                                    combined_ds[v].data = a
+                            ds.close()
 
-            combined_output_path = os.path.join(self.output_folder, combined_filename)
-            combined_ds.attrs["processing_level"] = ",".join(processing_levels)
-            combined_ds.attrs["acquisition_time"] = date_format(group.start_dt + (group.end_dt - group.start_dt) / 2)
-            combined_ds.to_netcdf(combined_output_path)
-            combined_ds.close()
-            self.logger.info("Processed group (%d/%d): Written combined data to %s" % (
-            group_index, len(self.groups), combined_output_path))
+                combined_output_path = os.path.join(self.output_folder, combined_filename)
+                combined_ds.attrs["processing_level"] = ",".join(processing_levels)
+                combined_ds.attrs["acquisition_time"] = date_format(group.start_dt + (group.end_dt - group.start_dt) / 2)
+                combined_ds.to_netcdf(combined_output_path)
+                combined_ds.close()
+                self.logger.info("Processed group (%d/%d): Written combined data to %s" % (
+                group_index, len(self.groups), combined_output_path))
+            except Exception:
+                self.logger.exception("failed to process group")
 
 # this program performs actions controlled by a grouping spec
 #

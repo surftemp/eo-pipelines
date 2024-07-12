@@ -23,56 +23,62 @@
 import argparse
 import logging
 import os
+import json
 
 from .run_pipeline import EOPipelineRunner
 
 import glob
 
-def read_progress(path):
-    completed_pipelines = []
-    if os.path.exists(path):
-        with open(path) as f:
-            lines = f.readlines()
-            for line in lines:
-                line = line.strip()
-                if line:
-                    completed_pipelines.append(line)
-    return completed_pipelines
-
-def write_progress(path, completed_pipelines):
-    with open(path,"w") as f:
-        for path in completed_pipelines:
-            f.write(path+"\n")
-
 def main():
     logging.basicConfig(level=logging.INFO)
     parser = argparse.ArgumentParser()
-    parser.add_argument("yaml_pattern")
-    parser.add_argument("--progress-csv-path",default="pipelines_progress.csv")
+    parser.add_argument("input_paths", nargs="+", help="paths to pipeline files, may contain wildcards")
     parser.add_argument("--limit", type=int, default=None)
 
     args = parser.parse_args()
-    pipelines_progress = read_progress(args.progress_csv_path)
 
-    yaml_paths = glob.glob(args.yaml_pattern,recursive=True)
+    yaml_paths = []
+    for input_path in args.input_paths:
+        yaml_paths += glob.glob(input_path,recursive=True)
+
+    print(f"matched {len(yaml_paths)} pipelines")
 
     main_folder = os.getcwd()
 
     ran = 0
     for yaml_path in yaml_paths:
-        if yaml_path not in pipelines_progress:
-            runner = EOPipelineRunner()
-            folder,yaml_filename = os.path.split(yaml_path)
-            os.chdir(folder)
-            print(f"running pipeline: {yaml_path} in folder {folder}")
-            runner.run(yaml_filename) # fixme should check status somehow
-            ran += 1
-            print(f"completed pipeline: {yaml_path} in folder {folder}")
-            os.chdir(main_folder)
-            pipelines_progress.append(yaml_path)
-            write_progress(args.progress_csv_path,pipelines_progress)
-            if args.limit and ran >= args.limit:
-                break
+        runner = EOPipelineRunner()
+        folder,yaml_filename = os.path.split(yaml_path)
+        os.chdir(folder)
+
+        # check to see if this pipeline has already been run to completion
+        status_path = "eo-pipeline-status.json"
+        if os.path.exists(status_path):
+            with open(status_path) as f:
+                status = json.loads(f.read())
+                if "succeeded" in status or "failed" in status:
+                    print(f"skipping completed pipeline: {yaml_path} in folder {folder}")
+                    continue
+
+        # run the next pipeline
+        print(f"running pipeline: {yaml_path} in folder {folder}")
+        runner.run(yaml_filename)
+
+        # get the result status
+        result_status = "unknown"
+        if os.path.exists(status_path):
+            with open(status_path) as f:
+                status = json.loads(f.read())
+                if "succeeded" in status:
+                    result_status = "success"
+                elif "failed" in status:
+                    result_status = "failed"
+
+        ran += 1
+        print(f"completed pipeline: {yaml_path} in folder {folder} with result {result_status}")
+        os.chdir(main_folder)
+        if args.limit and ran >= args.limit:
+            break
 
 if __name__ == '__main__':
     main()

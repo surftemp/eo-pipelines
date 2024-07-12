@@ -108,14 +108,15 @@ class TimeStacker:
 
                             data.variables[variable][tuple(lh_lookup)] = add_data.variables[variable][tuple(rh_lookup)]
                     except Exception:
-                        self.logger.exception("error adding {filename} retry {i+1}/{self.retry_count}")
+                        self.logger.exception(f"error adding {filename} retry {i+1}/{self.retry_count}")
                         time.sleep(self.retry_delay_s)
                         continue
-                    self.logger.exception("added {filename}")
+                    self.logger.info(f"added {filename}")
                     count += 1
                     append_count += 1
-                    pos += 1
                     break
+                pos += 1
+
             if append_count > 0:
                 data.close()
                 duration = int(time.time() - start_time)

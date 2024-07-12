@@ -2,6 +2,16 @@
 
 Define and run pipelines to process Earth Observation (EO) data.
 
+## List of CLI tools
+
+| tool             | description                                                                    |
+|------------------|--------------------------------------------------------------------------------|
+| create_pipelines | create multiple pipelines given a template and csv containing parameters       |
+| run_pipeline    | run a single pipeline                                                          |
+| run_pipelines    | run multiple pipelines sequentially                                            |
+| manage_pipelines | monitor and launch sets of pipelines                                           |
+| query_tracking_database | explore data logged from running pipeline stages/tasks to a tracking database  |
+
 ## Installation
 
 create a conda environment called `eo_pipelines_env` using:
@@ -132,17 +142,18 @@ executor_setting | purpose
 
 Pipleline stages currently supported:
 
-stage_name | purpose                                                                            | required conda environment
------------|------------------------------------------------------------------------------------| --------------------------
-**usgs_search** | find landsat scenes using the usgs tool                                            | usgs_env
-**usgs_fetch** | download landsat scenes using the usgs_download tool                               | usgs_env
-**landsat_import** | convert landsat scenes to netcdf4                                                  | rioxarray_env
-**usgs_group** | combine/stack landsat scenes from the same orbit (also across different datasets)  | pyproj_env
-**xesmf_regrid** | regrid scenes onto a target grid using XESMF                                       | xesmf_env
-**add_masks** | add mask layers defined by geojson files                                           | cartopy_env
-**landsat_align** | perform the intersection of a set of landsat scenes from the same row/path         | xesmf_env
-**netcdf2html** | create an interactive static HTML website for exploring netcdf files               | cartopy_env
-**time_stacker** | combine a number of separate netcdf4 files into one file by appending along the time access | pyproj_env
+stage_name | purpose                                                                                                           | required conda environment
+-----------|-------------------------------------------------------------------------------------------------------------------| --------------------------
+**usgs_search** | find landsat scenes using the usgs tool                                                                           | usgs_env
+**usgs_fetch** | download landsat scenes using the usgs_download tool                                                              | usgs_env
+**landsat_import** | convert landsat scenes to netcdf4                                                                                 | rioxarray_env
+**usgs_group** | combine/stack landsat scenes from the same orbit (also across different datasets)                                 | pyproj_env
+**xesmf_regrid** | regrid scenes onto a target grid using XESMF                                                                      | xesmf_env
+**add_masks** | add mask layers defined by geojson files                                                                          | cartopy_env
+**landsat_align** | perform the intersection of a set of landsat scenes from the same row/path                                        | xesmf_env
+**netcdf2html** | create an interactive static HTML website for exploring netcdf files                                              | cartopy_env
+**time_stacker** | combine a number of separate netcdf4 files into one file by appending along the time access                       | pyproj_env
+**metadata_tweaker** | output a netcdf4 with adjusted metadata for each input file | pyproj_env
 
 ## Required conda environments
 
