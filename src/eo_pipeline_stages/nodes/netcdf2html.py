@@ -52,7 +52,7 @@ class Netcdf2Html(PipelineStage):
         for option in ["netcdf-download-filename","sample-count","sample-cases"]:
             option_value = self.get_configuration().get(option,"")
             if option_value:
-                options += f' --{option} "{option_value}"'
+                options += f' --{option} {option_value}'
         return options
 
     def execute_stage(self, inputs):

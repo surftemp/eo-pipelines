@@ -41,6 +41,9 @@ class TimeStacker:
         self.retry_count = 3
         self.retry_delay_s = 10
 
+        self.retry_append_count = 5
+        self.retry_append_delay_s = 30
+
     def run(self):
 
         # work out a list of all filenames
@@ -82,8 +85,16 @@ class TimeStacker:
             # append a batch of files to the output
             start_time = time.time()
             append_count = 0
-            # open the output file for append
-            data = netCDF4.Dataset(self.output_path, "a")
+            # open the output file for append, with retries
+            for i in range(self.retry_append_count):
+                try:
+                    data = netCDF4.Dataset(self.output_path, "a")
+                except:
+                    self.logger.exception(f"error opening {self.output_path} for append, retry {i + 1}/{self.retry_count}")
+                    time.sleep(self.retry_append_delay_s)
+                    continue
+                break
+
             # work out length of the time dimension
             count = len(data.variables["time"])
             while pos < len(filenames) and append_count < self.batch_size:
@@ -155,6 +166,7 @@ def main():
 
     processor = TimeStacker(args.input_folders, args.output_path, args.limit, args.sample, args.batch_size,
                             args.remove_attributes)
+
     processor.run()
 
 if __name__ == '__main__':

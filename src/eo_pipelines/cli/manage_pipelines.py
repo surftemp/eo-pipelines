@@ -34,6 +34,10 @@ def main():
     parser.add_argument("input_paths", nargs="+", help="paths to pipeline files, may contain wildcards")
     parser.add_argument("--launch-command", type=str, help="command to launch a pipeline", default="sbatch run.sh")
     parser.add_argument("--launch-count", type=int, help="number of jobs to launch", default=0)
+    parser.add_argument("--reset-queued", action="store_true", help="reset jobs that are marked as queued")
+    parser.add_argument("--reset-running", action="store_true", help="reset jobs that are marked as running")
+    parser.add_argument("--reset-succeeded", action="store_true", help="reset jobs that are marked as succeeded")
+    parser.add_argument("--reset-failed", action="store_true", help="reset jobs that are marked as failed")
 
     args = parser.parse_args()
     to_launch = args.launch_count
@@ -58,6 +62,7 @@ def main():
         status_path = os.path.join(folder_path, EOPipelineRunner.STATUS_FILENAME)
 
         status = {}
+        state = None
 
         if os.path.exists(status_path):
             with open(status_path) as f:
@@ -71,18 +76,35 @@ def main():
                     completed_stages.append(stage_id)
 
         if "succeeded" in status:
-            succeeded += 1
-            state = "succeeded"
+            if args.reset_succeeded:
+                status = {}
+                os.remove(status_path)
+            else:
+                succeeded += 1
+                state = "succeeded"
         elif "failed" in status:
-            failed += 1
-            state = "failed"
+            if args.reset_failed:
+                status = {}
+                os.remove(status_path)
+            else:
+                failed += 1
+                state = "failed"
         elif "running" in status:
-            running += 1
-            state = "running"
+            if args.reset_running:
+                status = {}
+                os.remove(status_path)
+            else:
+                running += 1
+                state = "running"
         elif "launched" in status:
-            queued += 1
-            state = "queued"
-        else:
+            if args.reset_queued:
+                status = {}
+                os.remove(status_path)
+            else:
+                queued += 1
+                state = "queued"
+
+        if state is None:
             if to_launch > 0:
                 to_launch -= 1
                 os.chdir(folder_path)
