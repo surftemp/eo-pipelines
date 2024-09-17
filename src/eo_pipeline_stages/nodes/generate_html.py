@@ -25,12 +25,12 @@ import os.path
 from eo_pipelines.pipeline_stage import PipelineStage
 from eo_pipelines.pipeline_stage_utils import format_int
 
-class Netcdf2Html(PipelineStage):
+class GenerateHtml(PipelineStage):
 
     VERSION = "0.0.1"
 
     def __init__(self, node_services):
-        super().__init__(node_services, "netcdf2html")
+        super().__init__(node_services, "generate_html")
         self.node_services = node_services
 
         self.output_folder = self.get_configuration().get("output_folder", "html_output")
@@ -38,7 +38,7 @@ class Netcdf2Html(PipelineStage):
         if not os.path.isabs(self.output_folder):
             self.output_folder = os.path.join(self.get_working_directory(), self.output_folder)
 
-        self.get_logger().info("eo_pipeline_stages.netcdf2html %s" % Netcdf2Html.VERSION)
+        self.get_logger().info("eo_pipeline_stages.generate_html %s" % Netcdf2Html.VERSION)
 
     def get_parameters(self):
         parameters = {}
@@ -120,7 +120,7 @@ class Netcdf2Html(PipelineStage):
                     else:
                         failed += 1
 
-        summary = f"netcdf2html: succeeded:{succeeded}, failed:{failed}"
+        summary = f"generate_html: succeeded:{succeeded}, failed:{failed}"
         if succeeded > 0:
             if failed > 0:
                 self.get_logger().warn(summary)

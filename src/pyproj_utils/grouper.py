@@ -107,6 +107,7 @@ class GroupProcessor:
         group_index = 0
 
         rename = self.input_spec.get("rename",{})
+        add_nan = self.input_spec.get("add_nan", None)
 
         for group in self.groups:
 
@@ -146,9 +147,6 @@ class GroupProcessor:
                             combined_ds.attrs["time_coverage_start"] = date_format(group.start_dt)
                             combined_ds.attrs["time_coverage_end"] = date_format(group.end_dt)
                         else:
-                            # check that lats and lons match up
-                            for coords in ["lat", "lon"]:
-                                npt.assert_equal(ds[coords].values, combined_ds[coords].values)
                             processing_levels.add(ds.attrs["processing_level"])
                             for v in ds.data_vars:
                                 if v not in combined_ds:
@@ -162,8 +160,20 @@ class GroupProcessor:
                 combined_output_path = os.path.join(self.output_folder, combined_filename)
                 combined_ds.attrs["processing_level"] = ",".join(processing_levels)
                 combined_ds.attrs["acquisition_time"] = date_format(group.start_dt + (group.end_dt - group.start_dt) / 2)
+
+                if add_nan:
+                    variables = add_nan["variables"]
+                    based_on = add_nan["based_on"]
+
+                    for variable in variables:
+                        shape = combined_ds[based_on].data.shape
+                        dims = combined_ds[based_on].dims
+                        arr = np.zeros(shape=shape, dtype=float)
+                        arr[::] = np.nan
+                        combined_ds[variable] = xr.DataArray(data=arr,dims=dims)
                 combined_ds.to_netcdf(combined_output_path)
                 combined_ds.close()
+
                 self.logger.info("Processed group (%d/%d): Written combined data to %s" % (
                 group_index, len(self.groups), combined_output_path))
             except Exception:

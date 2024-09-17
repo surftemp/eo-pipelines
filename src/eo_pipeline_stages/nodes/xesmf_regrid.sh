@@ -2,6 +2,6 @@
 
 eval "$($CONDA_PATH 'shell.bash' 'hook' 2> /dev/null)"
 
-conda activate xesmf_env
+conda activate xarray_regridder_env
 
-regrid $INPUT_PATH $GRID_PATH $OUTPUT_FOLDER $CACHE_FOLDER --max-distance $MAX_DISTANCE
+xesmf_regridder $INPUT_PATH $GRID_PATH $OUTPUT_FOLDER $CACHE_FOLDER --max-distance $MAX_DISTANCE

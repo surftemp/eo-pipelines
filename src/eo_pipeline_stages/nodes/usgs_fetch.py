@@ -31,34 +31,35 @@ from eo_pipelines.executors.executor_factory import ExecutorType
 
 # for supported datasets, map from channel name to a unique file suffix
 suffix_map = {
+
     "LANDSAT_OT_C2_L1": {
-        "1" : "B1.TIF",
-        "2" : "B2.TIF",
-        "3" : "B3.TIF",
-        "4" : "B4.TIF",
-        "5" : "B5.TIF",
-        "6" : "B6.TIF",
-        "7" : "B7.TIF",
-        "8" : "B8.TIF",
-        "9" : "B9.TIF",
-        "10" : "B10.TIF",
-        "11" : "B11.TIF",
+        "B1" : "B1.TIF",
+        "B2" : "B2.TIF",
+        "B3" : "B3.TIF",
+        "B4" : "B4.TIF",
+        "B5" : "B5.TIF",
+        "B6" : "B6.TIF",
+        "B7" : "B7.TIF",
+        "B8" : "B8.TIF",
+        "B9" : "B9.TIF",
+        "B10" : "B10.TIF",
+        "B11" : "B11.TIF",
         "QA" : "BQA.TIF",
         "QA_PIXEL": "QA_PIXEL.TIF",
-        "VAA": "VAA.TIF", # collection 2 only
-        "VZA": "VZA.TIF", # collection 2 only
-        "SAA": "SAA.TIF", # collection 2 only
-        "SZA": "SZA.TIF"  # collection 2 only
+        "VAA": "VAA.TIF",
+        "VZA": "VZA.TIF",
+        "SAA": "SAA.TIF",
+        "SZA": "SZA.TIF"
     },
 
     "LANDSAT_OT_C2_L2": {
-        "1" : "SR_B1.TIF",
-        "2" : "SR_B2.TIF",
-        "3" : "SR_B3.TIF",
-        "4" : "SR_B4.TIF",
-        "5" : "SR_B5.TIF",
-        "6" : "SR_B6.TIF",
-        "7" : "SR_B7.TIF",
+        "B1" : "SR_B1.TIF",
+        "B2" : "SR_B2.TIF",
+        "B3" : "SR_B3.TIF",
+        "B4" : "SR_B4.TIF",
+        "B5" : "SR_B5.TIF",
+        "B6" : "SR_B6.TIF",
+        "B7" : "SR_B7.TIF",
         "ST": "ST_B10.TIF",
         "ST_QA": "ST_QA.TIF",
         "EMIS": "ST_EMIS.TIF",
@@ -69,6 +70,41 @@ suffix_map = {
         "ATRAN": "ST_ATRAN.TIF",
         "QA_PIXEL": "QA_PIXEL.TIF",
         "QA_AEROSOL": "SR_QA_AEROSOL.TIF",
+        "QA_RADSAT": "QA_RADSAT.TIF"
+    },
+
+    "LANDSAT_ETM_C2_L1": {
+        "B1" : "B1.TIF",
+        "B2" : "B2.TIF",
+        "B3" : "B3.TIF",
+        "B4" : "B4.TIF",
+        "B5" : "B5.TIF",
+        "B6_1" : "B6_VCID_1.TIF",
+        "B6_2" : "B6_VCID_2.TIF",
+        "B7" : "B7.TIF",
+        "B8" : "B8.TIF",
+        "QA_PIXEL": "QA_PIXEL.TIF",
+        "VAA": "VAA.TIF",
+        "VZA": "VZA.TIF",
+        "SAA": "SAA.TIF",
+        "SZA": "SZA.TIF"
+    },
+
+    "LANDSAT_ETM_C2_L2": {
+        "B1" : "SR_B1.TIF",
+        "B2" : "SR_B2.TIF",
+        "B3" : "SR_B3.TIF",
+        "B4" : "SR_B4.TIF",
+        "B5" : "SR_B5.TIF",
+        "ST": "ST_B6.TIF",
+        "ST_QA": "ST_QA.TIF",
+        "EMIS": "ST_EMIS.TIF",
+        "EMSD": "ST_EMSD.TIF",
+        "TRAD": "ST_TRAD.TIF",
+        "URAD": "ST_URAD.TIF",
+        "DRAD": "ST_DRAD.TIF",
+        "ATRAN": "ST_ATRAN.TIF",
+        "QA_PIXEL": "QA_PIXEL.TIF",
         "QA_RADSAT": "QA_RADSAT.TIF"
     }
 }
@@ -142,48 +178,49 @@ class Fetch(PipelineStage):
                 fetched = 0
                 for dataset in input:
                     entity_ids = input[dataset]
-                    scenes_csv_path = os.path.join(self.get_working_directory(), "%s_scenes.csv" % (dataset))
-                    with open(scenes_csv_path,"w") as f:
-                        f.write(dataset+"\n")
-                        for entity_id in entity_ids:
-                            f.write(entity_id+"\n")
+                    if len(entity_ids) > 0:
+                        scenes_csv_path = os.path.join(self.get_working_directory(), "%s_scenes.csv" % (dataset))
+                        with open(scenes_csv_path,"w") as f:
+                            f.write(dataset+"\n")
+                            for entity_id in entity_ids:
+                                f.write(entity_id+"\n")
 
-                    required_bands = self.get_spec().get_bands_for_dataset(dataset)
+                        required_bands = self.get_spec().get_bands_for_dataset(dataset)
 
-                    suffix_mapping = suffix_map.get(dataset, {})
-                    suffixes = [".XML"]
-                    for band_name in suffix_mapping:
-                        if len(required_bands)==0 or band_name in required_bands:
-                            suffixes.append(suffix_mapping[band_name])
+                        suffix_mapping = suffix_map.get(dataset, {})
+                        suffixes = [".XML"]
+                        for band_name in suffix_mapping:
+                            if len(required_bands)==0 or band_name in required_bands:
+                                suffixes.append(suffix_mapping[band_name])
 
-                    dataset_output_folder = os.path.join(self.output_path,dataset)
-                    os.makedirs(dataset_output_folder, exist_ok=True)
+                        dataset_output_folder = os.path.join(self.output_path,dataset)
+                        os.makedirs(dataset_output_folder, exist_ok=True)
 
-                    dataset_download_folder = os.path.join(self.download_path, dataset)
-                    os.makedirs(dataset_download_folder, exist_ok=True)
+                        dataset_download_folder = os.path.join(self.download_path, dataset)
+                        os.makedirs(dataset_download_folder, exist_ok=True)
 
-                    custom_env = {
-                            "USGS_USERNAME": usgs_username,
-                            "USGS_PASSWORD": usgs_password,
-                            "USGS_DATADIR": self.output_path,
-                            "SCENES_CSV_PATH": scenes_csv_path,
-                            "SUFFIXES": " ".join(suffixes),
-                            "OUTPUT_FOLDER": dataset_output_folder,
-                            "DOWNLOAD_FOLDER": dataset_download_folder,
-                            "FILE_CACHE_INDEX": file_cache_index,
-                            "NO_DOWNLOAD": "--no-download" if no_download else ""
-                    }
+                        custom_env = {
+                                "USGS_USERNAME": usgs_username,
+                                "USGS_PASSWORD": usgs_password,
+                                "USGS_DATADIR": self.output_path,
+                                "SCENES_CSV_PATH": scenes_csv_path,
+                                "SUFFIXES": " ".join(suffixes),
+                                "OUTPUT_FOLDER": dataset_output_folder,
+                                "DOWNLOAD_FOLDER": dataset_download_folder,
+                                "FILE_CACHE_INDEX": file_cache_index,
+                                "NO_DOWNLOAD": "--no-download" if no_download else ""
+                        }
 
-                    fetch_script = os.path.join(os.path.split(__file__)[0], "usgs_fetch.sh")
-                    fetch_task_id = executor.queue_task(self.get_stage_id(),fetch_script,custom_env,self.get_working_directory())
-                    executor.wait_for_tasks()
-                    if not executor.get_task_result(fetch_task_id):
-                        self.get_logger().error("Failed to fetch of scenes for dataset: %s" % dataset)
-                    else:
-                        fetched += 1
-                    output_folders[dataset] = dataset_output_folder
-                    if limit is not None and fetched >= limit:
-                        break
+                        fetch_script = os.path.join(os.path.split(__file__)[0], "usgs_fetch.sh")
+                        fetch_task_id = executor.queue_task(self.get_stage_id(),fetch_script,custom_env,self.get_working_directory())
+                        executor.wait_for_tasks()
+                        if not executor.get_task_result(fetch_task_id):
+                            self.get_logger().error("Failed to fetch of scenes for dataset: %s" % dataset)
+                        else:
+                            fetched += 1
+                        output_folders[dataset] = dataset_output_folder
+                        if limit is not None and fetched >= limit:
+                            break
 
         return {"output":output_folders}
 

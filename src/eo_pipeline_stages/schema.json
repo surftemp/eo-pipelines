@@ -11,12 +11,29 @@
         "classname": "configuration.Configuration"
     },
     "node_types": {
-        "sleep": {
+        "read_dataset_directory": {
             "metadata": {
-                "name": "Sleep",
-                "description": "Test stage that just... sleeps"
+                "name": "Read dataset directory",
+                "description": "Read scenes from a dataset directory"
             },
-            "classname": "nodes.sleep.Sleep"
+            "output_ports": {
+                "output": {
+                    "link_type": "eo_pipelines:netcdf_sceneset"
+                }
+            },
+            "classname": "nodes.read_dataset_directory.ReadDatasetDirectory"
+        },
+        "read_regridded_dataset_directory": {
+            "metadata": {
+                "name": "Read regridded dataset directory",
+                "description": "Read regridded scenes from a dataset directory"
+            },
+            "output_ports": {
+                "output": {
+                    "link_type": "eo_pipelines:netcdf_regridded_sceneset"
+                }
+            },
+            "classname": "nodes.read_dataset_directory.ReadDatasetDirectory"
         },
         "usgs_search": {
             "metadata": {
@@ -64,41 +81,7 @@
             },
             "classname": "nodes.landsat_import.LandsatImport"
         },
-        "landsat_align": {
-            "metadata": {
-                "name": "Landsat Align",
-                "description": "Align landsat scenes from a specific row/path and optionally aggregate them"
-            },
-            "input_ports": {
-                "input": {
-                    "link_type": "eo_pipelines:netcdf_sceneset"
-                }
-            },
-            "output_ports": {
-                "output": {
-                    "link_type": "eo_pipelines:netcdf_sceneset"
-                }
-            },
-            "classname": "nodes.landsat_align.LandsatAlign"
-        },
-        "usgs_group": {
-            "metadata": {
-                "name": "Group",
-                "description": "Group scenes from different datasets into one file"
-            },
-            "input_ports": {
-                "input": {
-                    "link_type": "eo_pipelines:netcdf_sceneset"
-                }
-            },
-            "output_ports": {
-                "output": {
-                    "link_type": "eo_pipelines:netcdf_sceneset"
-                }
-            },
-            "classname": "nodes.usgs_group.Group"
-        },
-        "xesmf_regrid": {
+                "xesmf_regrid": {
             "metadata": {
                 "name": "Regrid",
                 "description": "Regrid scenes to a target grid"
@@ -110,7 +93,7 @@
             },
             "output_ports": {
                 "output": {
-                    "link_type": "eo_pipelines:netcdf_sceneset"
+                    "link_type": "eo_pipelines:netcdf_regridded_sceneset"
                 }
             },
             "classname": "nodes.xesmf_regrid.XESMFRegrid"
@@ -127,10 +110,27 @@
             },
             "output_ports": {
                 "output": {
-                    "link_type": "eo_pipelines:netcdf_sceneset"
+                    "link_type": "eo_pipelines:netcdf_regridded_sceneset"
                 }
             },
             "classname": "nodes.regrid.Regrid"
+        },
+        "group": {
+            "metadata": {
+                "name": "Group",
+                "description": "Group scenes from different datasets into one file"
+            },
+            "input_ports": {
+                "input": {
+                    "link_type": "eo_pipelines:netcdf_regridded_sceneset"
+                }
+            },
+            "output_ports": {
+                "output": {
+                    "link_type": "eo_pipelines:netcdf_regridded_sceneset"
+                }
+            },
+            "classname": "nodes.group.Group"
         },
         "time_stacker": {
             "metadata": {
@@ -139,12 +139,12 @@
             },
             "input_ports": {
                 "input": {
-                    "link_type": "eo_pipelines:netcdf_sceneset"
+                    "link_type": "eo_pipelines:netcdf_regridded_sceneset"
                 }
             },
             "output_ports": {
                 "output": {
-                    "link_type": "eo_pipelines:netcdf_sceneset"
+                    "link_type": "eo_pipelines:netcdf_regridded_sceneset"
                 }
             },
             "classname": "nodes.time_stacker.TimeStacker"
@@ -156,12 +156,12 @@
             },
             "input_ports": {
                 "input": {
-                    "link_type": "eo_pipelines:netcdf_sceneset"
+                    "link_type": "eo_pipelines:netcdf_regridded_sceneset"
                 }
             },
             "output_ports": {
                 "output": {
-                    "link_type": "eo_pipelines:netcdf_sceneset"
+                    "link_type": "eo_pipelines:netcdf_regridded_sceneset"
                 }
             },
             "classname": "nodes.missing_filter.MissingFilter"
@@ -173,12 +173,12 @@
             },
             "input_ports": {
                 "input": {
-                    "link_type": "eo_pipelines:netcdf_sceneset"
+                    "link_type": "eo_pipelines:netcdf_regridded_sceneset"
                 }
             },
             "output_ports": {
                 "output": {
-                    "link_type": "eo_pipelines:netcdf_sceneset"
+                    "link_type": "eo_pipelines:netcdf_regridded_sceneset"
                 }
             },
             "classname": "nodes.add_masks.AddMasks"
@@ -190,29 +190,29 @@
             },
             "input_ports": {
                 "input": {
-                    "link_type": "eo_pipelines:netcdf_sceneset"
+                    "link_type": "eo_pipelines:netcdf_regridded_sceneset"
                 }
             },
             "output_ports": {
                 "output": {
-                    "link_type": "eo_pipelines:netcdf_sceneset"
+                    "link_type": "eo_pipelines:netcdf_regridded_sceneset"
                 }
             },
             "classname": "nodes.add_spatial.AddSpatial"
         },
-        "netcdf2html": {
+        "generate_html": {
             "metadata": {
                 "name": "netcdf2HTML",
                 "description": "Convert netcdf files to explorable HTML"
             },
             "input_ports": {
                 "input": {
-                    "link_type": "eo_pipelines:netcdf_sceneset"
+                    "link_type": "eo_pipelines:netcdf_regridded_sceneset"
                 }
             },
             "output_ports": {
             },
-            "classname": "nodes.netcdf2html.Netcdf2Html"
+            "classname": "nodes.generate_html.GenerateHtml"
         },
         "metadata_tweaker": {
             "metadata": {
@@ -221,12 +221,12 @@
             },
             "input_ports": {
                 "input": {
-                    "link_type": "eo_pipelines:netcdf_sceneset"
+                    "link_type": "eo_pipelines:netcdf_regridded_sceneset"
                 }
             },
             "output_ports": {
                 "output": {
-                    "link_type": "eo_pipelines:netcdf_sceneset"
+                    "link_type": "eo_pipelines:netcdf_regridded_sceneset"
                 }
             },
             "classname": "nodes.metadata_tweaker.MetadataTweaker"
@@ -249,6 +249,12 @@
             "metadata": {
                 "name": "Landsat imported scenes",
                 "description": "A set of landsat scenes imported to netcdf"
+            }
+        },
+        "netcdf_regridded_sceneset": {
+            "metadata": {
+                "name": "Regridded scenes",
+                "description": "A set of landsat scenes imported to netcdf and regridded onto the same grid"
             }
         }
     }

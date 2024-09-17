@@ -88,7 +88,7 @@ class LandsatImport(PipelineStage):
 
                     metadata_id = os.path.splitext(os.path.split(metadata_path)[1])[0]
                     custom_env = self.get_parameters()
-                    custom_env["BANDS"] = ",".join(self.get_spec().get_bands_for_dataset(dataset))
+                    custom_env["BANDS"] = " ".join(self.get_spec().get_bands_for_dataset(dataset))
                     custom_env["SCENE_PATH"] = metadata_path
                     custom_env["OUTPUT_PATH"] = dataset_output_folder
                     custom_env["INJECT_METADATA"] = inject_metadata_cmd

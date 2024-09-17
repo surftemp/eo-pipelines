@@ -23,6 +23,7 @@
 import os
 import csv
 import json
+import datetime
 
 from eo_pipelines.pipeline_stage import PipelineStage
 from eo_pipelines.pipeline_stage_utils import format_int, format_date, format_float
@@ -61,13 +62,22 @@ class USGS_Search(PipelineStage):
         else:
             month_filter = ""
 
+        start_date = self.get_spec().get_start_date()
+        end_date = self.get_spec().get_end_date()
+
+        # allow the specification start and end date to be overridden in this stage
+        if "start_date" in self.get_configuration():
+            start_date = datetime.datetime.strptime(self.get_configuration()["start_date"], "%Y-%m-%d").date()
+        if "end_date" in self.get_configuration():
+            end_date = datetime.datetime.strptime(self.get_configuration()["end_date"], "%Y-%m-%d").date()
+
         return {
             "LAT_MIN": format_float(self.get_spec().get_lat_min()),
             "LAT_MAX": format_float(self.get_spec().get_lat_max()),
             "LON_MIN": format_float(self.get_spec().get_lon_min()),
             "LON_MAX": format_float(self.get_spec().get_lon_max()),
-            "START_DATE": format_date(self.get_spec().get_start_date()),
-            "END_DATE": format_date(self.get_spec().get_end_date()),
+            "START_DATE": format_date(start_date),
+            "END_DATE": format_date(end_date),
             "MAX_CLOUD_COVER_PCT": format_int(int(self.get_spec().get_max_cloud_cover_fraction() * 100)),
             "OUTPUT_PATH": self.output_path,
             "MONTH_FILTER": month_filter,
@@ -102,7 +112,12 @@ class USGS_Search(PipelineStage):
             with open(parameters_path) as f:
                 last_parameters = json.loads(f.read())
 
-        datasets = self.get_spec().datasets[:]
+        if "datasets" in self.get_configuration():
+            # if a list of datasets is specified in the parameters for this stage, use that list...
+            datasets = self.get_configuration()["datasets"]
+        else:
+            # otherwise use the specification
+            datasets = self.get_spec().datasets
 
         # if any of the datasets are ecostress, make sure that ECOSTRESS_ECO1BGEO is also included
         for dataset in datasets:
