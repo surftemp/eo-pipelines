@@ -51,11 +51,13 @@ class XESMFRegrid(PipelineStage):
         self.get_logger().info("eo_pipeline_stages.XESMFRegrid %s" % XESMFRegrid.VERSION)
 
     def get_parameters(self):
-        return {
+        parameters = {
             "GRID_PATH": self.get_configuration().get("target_grid_path"),
-            "CACHE_PATH": "--cache-folder "+self.cache_path,
             "MAX_DISTANCE": format_int(self.get_configuration().get("max_distance",100))
         }
+        if self.cache_path:
+            parameters["CACHE_PATH"] = "--cache-folder "+self.cache_path
+        return parameters
 
     def execute_stage(self, inputs):
 

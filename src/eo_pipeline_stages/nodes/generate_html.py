@@ -38,7 +38,7 @@ class GenerateHtml(PipelineStage):
         if not os.path.isabs(self.output_folder):
             self.output_folder = os.path.join(self.get_working_directory(), self.output_folder)
 
-        self.get_logger().info("eo_pipeline_stages.generate_html %s" % Netcdf2Html.VERSION)
+        self.get_logger().info("eo_pipeline_stages.generate_html %s" % GenerateHtml.VERSION)
 
     def get_parameters(self):
         parameters = {}
@@ -95,7 +95,7 @@ class GenerateHtml(PipelineStage):
                     output_path = os.path.join(output_folder,filename_root)
                     os.makedirs(output_path,exist_ok=True)
 
-                    script = os.path.join(os.path.split(__file__)[0], "netcdf2html.sh")
+                    script = os.path.join(os.path.split(__file__)[0], "generate_html.sh")
 
                     custom_env = {
                         "INPUT_PATH": input_path,

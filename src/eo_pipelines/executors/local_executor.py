@@ -72,9 +72,16 @@ class ExecutorThread(threading.Thread):
                 f.write("\n\n------------------------------------\n\n")
                 cmd_s = " ".join(cmd)
                 f.write(f"Running command: {cmd_s}\n")
+                f.write(f"Working Directory: {working_dir}\n")
                 f.write("Environment:\n")
                 for (key,value) in env_vars.items():
                     f.write(f"\t{key}={value}\n")
+                f.write("Script:\n")
+                with open(script) as rf:
+                    script_contents = rf.read()
+                    for (key, value) in env_vars.items():
+                        script_contents = script_contents.replace("$"+key,value)
+                    f.write(script_contents)
                 f.write("\n\n------------------------------------\n\n")
 
             pr = ProcessRunner(cmd, env_vars, stage_id, echo_stdout=self.echo_stdout, log_path=log_path,

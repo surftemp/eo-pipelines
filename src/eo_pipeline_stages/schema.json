@@ -200,6 +200,23 @@
             },
             "classname": "nodes.add_spatial.AddSpatial"
         },
+        "custom_processor": {
+            "metadata": {
+                "name": "CustomProcessor",
+                "description": "Perform custom processing"
+            },
+            "input_ports": {
+                "input": {
+                    "link_type": "eo_pipelines:netcdf_regridded_sceneset"
+                }
+            },
+            "output_ports": {
+                "output": {
+                    "link_type": "eo_pipelines:netcdf_regridded_sceneset"
+                }
+            },
+            "classname": "nodes.custom_processor.CustomProcessor"
+        },
         "generate_html": {
             "metadata": {
                 "name": "netcdf2HTML",

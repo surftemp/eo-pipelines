@@ -49,6 +49,7 @@ def main():
     for yaml_path in yaml_paths:
         runner = EOPipelineRunner()
         folder,yaml_filename = os.path.split(yaml_path)
+        os.chdir(main_folder)
         os.chdir(folder)
 
         # check to see if this pipeline has already been run to completion
@@ -76,7 +77,6 @@ def main():
 
         ran += 1
         print(f"completed pipeline: {yaml_path} in folder {folder} with result {result_status}")
-        os.chdir(main_folder)
         if args.limit and ran >= args.limit:
             break
 

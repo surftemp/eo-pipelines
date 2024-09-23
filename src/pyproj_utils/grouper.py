@@ -19,6 +19,7 @@
 """Utility programming for grouping together regridded scenes that are acquired at similar times and cover similar areas"""
 
 import argparse
+import copy
 import logging
 import os
 import json
@@ -136,8 +137,11 @@ class GroupProcessor:
                     # paths will be sorted by filename, then later values take priority
                     for path in paths:
                         ds = xr.open_dataset(path)
+
                         if dataset in rename:
-                            ds = ds.rename_vars(rename[dataset])
+                            rename_vars = {k:v for (k,v) in rename[dataset].items() if k in ds.variables}
+                            if rename_vars:
+                                ds = ds.rename_vars(rename_vars)
 
                         # FIXME extend the first file we come across to create the output
                         # this is not ideal as we may carry across more information than we need

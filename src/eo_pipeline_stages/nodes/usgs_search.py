@@ -189,6 +189,32 @@ class USGS_Search(PipelineStage):
                 self.get_logger().exception(f"Error fetching scenes for {dataset}")
                 errors += 1
 
+        # scenes are the scene identifier in form LC8083231YYYYDDDLGN00 where YYYY is they year and DDD is the day of year
+        # date-time matchup: when we have multiple datasets, use only the scenes where we have data from all datasets for a given year/day of year
+        if len(datasets) > 1:
+            def parse_scene_id(scene_id):
+                year = int(scene_id[9:13])
+                doy = int(scene_id[13:16])
+                return (year, doy)
+            year_day = {} # lookup (year,doy) => set(dataset_name)
+            # build the lookup
+            for dataset in datasets:
+                for scene_id in scene_list[dataset]:
+                    key = parse_scene_id(scene_id)
+                    if key not in year_day:
+                        year_day[key] = set()
+                    year_day[key].add(dataset)
+            # perform the screening, only include scenes where there is data on the same day in all datasets
+            for dataset in datasets:
+                filtered_scenes = []
+                for scene_id in scene_list[dataset]:
+                    key = parse_scene_id(scene_id)
+                    if len(year_day[key]) == len(datasets):
+                        filtered_scenes.append(scene_id)
+                removed = len(scene_list[dataset]) - len(filtered_scenes)
+                self.get_logger().info(f"Datetime matchup: filtered {removed} scenes from dataset {dataset}")
+                scene_list[dataset] = filtered_scenes
+
         if errors == 0:
             with open(parameters_path,"w") as f:
                 f.write(json.dumps(parameters))

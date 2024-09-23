@@ -71,7 +71,7 @@ class Group(PipelineStage):
                 "GROUPING_SPEC_PATH": grouping_spec_file_path,
                 "OUTPUT_PATH": group_path
             }
-            script = os.path.join(os.path.split(__file__)[0], "usgs_group.sh")
+            script = os.path.join(os.path.split(__file__)[0], "group.sh")
             executor.queue_task(self.get_stage_id(),script,custom_env,self.get_working_directory())
             executor.wait_for_tasks()
 

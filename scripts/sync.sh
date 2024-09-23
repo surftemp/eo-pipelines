@@ -16,12 +16,6 @@ else
   rsync -avr $rootfolder/pyproject.toml $username@$hostname:$destfolder/eo-pipelines
   rsync -avr $rootfolder/setup.cfg $username@$hostname:$destfolder/eo-pipelines
   rsync -avr $rootfolder/MANIFEST.in $username@$hostname:$destfolder/eo-pipelines
-
-  for environment in cartopy pyproj xesmf rioxarray
-  do
-      echo syncing $environment
-      rsync -avr $rootfolder/environments/$environment $username@$hostname:$destfolder
-  done
 fi
 
 
