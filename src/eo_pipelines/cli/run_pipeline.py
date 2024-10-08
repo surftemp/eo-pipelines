@@ -38,7 +38,10 @@ class EOPipelineRunner:
     STATUS_FILENAME = "eo-pipeline-status.json"
 
     def __init__(self):
-        pass
+        self.configuration = {}
+
+    def configure(self, property_name, property_value):
+        self.configuration[property_name] = property_value
 
     def run(self, yaml_path):
         with tempfile.TemporaryDirectory() as tmpdirname:
@@ -47,6 +50,8 @@ class EOPipelineRunner:
                 import_from_yaml(t, f)
             stage_ids = t.get_node_ids()
             status = {}
+            for (property_name,property_value) in self.configuration:
+                t.set_package_property("eo_pipelines", property_name, property_value)
             if os.path.exists(EOPipelineRunner.STATUS_FILENAME):
                 try:
                     with open(EOPipelineRunner.STATUS_FILENAME) as f:
@@ -70,8 +75,14 @@ def main():
     logging.basicConfig(level=logging.INFO)
     parser = argparse.ArgumentParser()
     parser.add_argument("yaml_path")
+    parser.add_argument("--with-configuration",nargs=2,action="append",metavar=["config-property-name","config-property-value"])
     args = parser.parse_args()
     runner = EOPipelineRunner()
+    if args.with_configuration:
+        for override in args.with_configuration:
+            config_property_name = override[0]
+            config_property_value = override[1]
+            runner.configure(config_property_name,config_property_value)
     if not runner.run(args.yaml_path):
         sys.exit(-1)
 

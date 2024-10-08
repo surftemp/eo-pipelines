@@ -41,7 +41,13 @@ class TimeStacker(PipelineStage):
         self.get_logger().info("eo_pipeline_stages.TimeStacker %s" % TimeStacker.VERSION)
 
     def get_parameters(self):
-        return {}
+        parameters = {}
+        if "stack_attributes" in self.get_configuration():
+            parameters["STACK_ATTRIBUTES"] = "--stack-attributes " + " ".join(self.get_configuration()["stack_attributes"])
+        if "keep_attributes" in self.get_configuration():
+            parameters["KEEP_ATTRIBUTES"] = "--keep-attributes " + " ".join(self.get_configuration()["keep_attributes"])
+
+        return parameters
 
     def execute_stage(self, inputs):
 

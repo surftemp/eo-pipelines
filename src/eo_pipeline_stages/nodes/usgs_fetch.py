@@ -96,6 +96,7 @@ suffix_map = {
         "B3" : "SR_B3.TIF",
         "B4" : "SR_B4.TIF",
         "B5" : "SR_B5.TIF",
+        "B7" : "SR_B7.TIF",
         "ST": "ST_B6.TIF",
         "ST_QA": "ST_QA.TIF",
         "EMIS": "ST_EMIS.TIF",

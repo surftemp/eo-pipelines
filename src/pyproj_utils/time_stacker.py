@@ -22,6 +22,7 @@
 
 import time
 import xarray as xr
+import numpy as np
 import netCDF4
 import logging
 import os.path
@@ -30,19 +31,19 @@ import random
 
 class TimeStacker:
 
-    def __init__(self, input_folders, output_path, limit, sample, batch_size, remove_attributes):
+    def __init__(self, input_folders, output_path, limit, sample, batch_size, stack_attributes, keep_attributes):
         self.input_folders = input_folders
         self.output_path = output_path
         self.limit = limit
         self.sample = sample
         self.batch_size = batch_size
-        self.remove_attributes = remove_attributes
+        self.keep_attributes = keep_attributes
         self.logger = logging.getLogger("TimeStacker")
         self.retry_count = 3
         self.retry_delay_s = 10
-
         self.retry_append_count = 5
         self.retry_append_delay_s = 30
+        self.stack_attributes = stack_attributes
 
     def run(self):
 
@@ -68,12 +69,18 @@ class TimeStacker:
         with xr.open_dataset(filenames[0]) as first_ds:
             # if no output file exists, use the first file, setting the time dimension to unlimited
             if not os.path.exists(self.output_path):
-                if self.remove_attributes:
-                    for remove_attribute in self.remove_attributes:
-                        if remove_attribute in first_ds.attrs:
-                            del first_ds.attrs[remove_attribute]
+
+                for attr_name in self.stack_attributes:
+                    attr_value = str(first_ds.attrs[attr_name])
+                    first_ds[attr_name] = xr.DataArray(np.array([attr_value]),dims=("time",))
+
+                attr_names = list(first_ds.attrs)
+                for attr_name in attr_names:
+                    if attr_name not in self.keep_attributes:
+                        del first_ds.attrs[attr_name]
                 first_ds.to_netcdf(self.output_path, unlimited_dims=["time"])
                 pos = 1
+
             # get a list of all variables which include the time dimension
             for variable in first_ds.variables:
                 v = first_ds.variables[variable]
@@ -103,6 +110,7 @@ class TimeStacker:
                     try:
                         filename = filenames[pos]
                         add_data = netCDF4.Dataset(filename)
+
                         if len(add_data.variables["time"]) != 1:
                             raise RuntimeError(f"Can only append files with time dimension of size 1: {filename}")
                         for (variable, dims) in append_variables:
@@ -117,7 +125,11 @@ class TimeStacker:
                                     lh_lookup.append(slice(0, None))
                                     rh_lookup.append(slice(0, None))
 
-                            data.variables[variable][tuple(lh_lookup)] = add_data.variables[variable][tuple(rh_lookup)]
+                            if variable in self.stack_attributes:
+                                attr_value = str(getattr(add_data, attr_name))
+                                data.variables[variable][tuple(lh_lookup)] = bytes(attr_value,"utf-8")
+                            else:
+                                data.variables[variable][tuple(lh_lookup)] = add_data.variables[variable][tuple(rh_lookup)]
                     except Exception:
                         self.logger.exception(f"error adding {filename} retry {i+1}/{self.retry_count}")
                         time.sleep(self.retry_delay_s)
@@ -148,11 +160,6 @@ def main():
         nargs="+", required=True)
 
     parser.add_argument(
-        "--remove-attributes",
-        help="specify one or more attributes to remove, if the output file does not exist (it will be created from the first input file)",
-        nargs="+")
-
-    parser.add_argument(
         "--limit", metavar="LIMIT", help="limit processed scenes by count", default=None, type=int)
 
     parser.add_argument(
@@ -162,10 +169,19 @@ def main():
         "--batch-size", type=int, metavar="BATCHSIZE", help="number of scenes to append before writing to disk",
         default=20)
 
+    parser.add_argument(
+        "--stack-attributes", nargs="+", metavar="ATTRIBUTE_NAME", help="each of these attributes will be removed and stacked into a new variable",
+        default=[])
+
+    parser.add_argument(
+        "--keep-attributes", nargs="+", metavar="ATTRIBUTE_NAME",
+        help="if the output file does not already exist each of these attributes will be preserved using values from the first input file",
+        default=[])
+
     args = parser.parse_args()
 
     processor = TimeStacker(args.input_folders, args.output_path, args.limit, args.sample, args.batch_size,
-                            args.remove_attributes)
+                            args.stack_attributes, args.keep_attributes)
 
     processor.run()
 

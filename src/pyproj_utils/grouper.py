@@ -108,7 +108,7 @@ class GroupProcessor:
         group_index = 0
 
         rename = self.input_spec.get("rename",{})
-        add_nan = self.input_spec.get("add_nan", None)
+        overlap_using = self.input_spec.get("overlap_using",{})
 
         for group in self.groups:
 
@@ -119,6 +119,7 @@ class GroupProcessor:
             datasets = self.input_spec["datasets"].keys()
 
             valid_group = True
+
             # make sure each dataset is represented in this group
             for dataset in datasets:
                 if len(group.get_scenes_for_dataset(dataset)) == 0:
@@ -129,12 +130,30 @@ class GroupProcessor:
             if not valid_group:
                 continue
 
+            # track the output variables for each dataset
+            output_variables_by_dataset = {}
+            for dataset in datasets:
+                output_variables_by_dataset[dataset] = set()
+
             try:
                 processing_levels = set()
                 for dataset in datasets:
+                    # merge in all the scenes for this particular dataset
+                    # if multiple scenes exist this involves "stitching" scenes together "along" the orbit
 
                     paths = group.get_scenes_for_dataset(dataset)
-                    # paths will be sorted by filename, then later values take priority
+
+                    # paths will be sorted by filename, earlier paths take priority during stitching
+                    if len(paths) > 1:
+                        if dataset not in overlap_using:
+                            self.logger.warning(
+                                "Stitching multiple scenes for dataset %s in  group (%d/%d) without overlap_using, each band will be stitched independently" % (
+                                    dataset, group_index, len(self.groups)))
+                        else:
+                            self.logger.info(
+                                "Stitching multiple scenes for dataset %s in group (%d/%d) with overlap_using band %s" % (
+                                    dataset, group_index, len(self.groups), overlap_using[dataset]))
+
                     for path in paths:
                         ds = xr.open_dataset(path)
 
@@ -143,8 +162,11 @@ class GroupProcessor:
                             if rename_vars:
                                 ds = ds.rename_vars(rename_vars)
 
-                        # FIXME extend the first file we come across to create the output
-                        # this is not ideal as we may carry across more information than we need
+                        # track the output variables
+                        for v in ds.data_vars:
+                            output_variables_by_dataset[dataset].add(v)
+
+                        # extend the first file we come across to create the output
                         if combined_ds is None:
                             combined_ds = ds
                             combined_filename = os.path.split(path)[1]
@@ -152,29 +174,62 @@ class GroupProcessor:
                             combined_ds.attrs["time_coverage_end"] = date_format(group.end_dt)
                         else:
                             processing_levels.add(ds.attrs["processing_level"])
+
+                            # merge in global attributes
+                            for attr_name in ds.attrs:
+                                if attr_name not in combined_ds.attrs:
+                                    combined_ds.attrs[attr_name] = ds.attrs[attr_name]
+                                else:
+                                    if ds.attrs[attr_name] != combined_ds.attrs[attr_name]:
+                                        combined_ds.attrs[attr_name] = str(combined_ds.attrs[attr_name]) + ", " + str(ds.attrs[attr_name])
+
+                            # merge in variables
+
+                            overlap_mask = None
+                            if len(paths) > 1:
+                                # when stitching multiple scenes...
+                                # if an overlap band has been specified, create a mask based on this
+                                # the mask will be true for each pixel where the overlap band currently has a NaN
+                                # value and the new dataset has a non-NaN values for the overlap band
+                                if dataset in overlap_using:
+                                    overlap_band = overlap_using[dataset]
+                                    if overlap_band in combined_ds:
+                                        overlap_mask = np.logical_and(np.isnan(combined_ds[overlap_band].values),
+                                                                    ~np.isnan(ds[overlap_band].values))
+
                             for v in ds.data_vars:
                                 if v not in combined_ds:
                                     combined_ds[v] = ds[v]
                                 else:
                                     a = combined_ds[v].values
-                                    a = np.where(np.isnan(a), ds[v].values, a)
+                                    if overlap_mask is None:
+                                        # no overlap mask, simply overwrite any NaN valued pixels in this band
+                                        a = np.where(np.isnan(a), ds[v].values, a)
+                                    else:
+                                        # using the overlap mask, only overwrite pixels where the overlap band is NaN
+                                        a = np.where(overlap_mask, ds[v].values, a)
                                     combined_ds[v].data = a
                             ds.close()
+
+                # check if we had variable name clash while processing, the output variables
+                # contributed by each dataset should have no intersection
+
+                all_output_variables = set()
+                clashing_output_variables = set()
+
+                for (dataset, output_variables) in output_variables_by_dataset.items():
+                    clashing_output_variables.update(all_output_variables.intersection(output_variables))
+                    all_output_variables.update(output_variables)
+
+                # if len(clashing_output_variables) > 0:
+                #    self.logger.error("Failed to process group (%d/%d): multiple datasets supply variables named %s" % (
+                #        group_index, len(self.groups), str(clashing_output_variables)))
+                #    continue
 
                 combined_output_path = os.path.join(self.output_folder, combined_filename)
                 combined_ds.attrs["processing_level"] = ",".join(processing_levels)
                 combined_ds.attrs["acquisition_time"] = date_format(group.start_dt + (group.end_dt - group.start_dt) / 2)
 
-                if add_nan:
-                    variables = add_nan["variables"]
-                    based_on = add_nan["based_on"]
-
-                    for variable in variables:
-                        shape = combined_ds[based_on].data.shape
-                        dims = combined_ds[based_on].dims
-                        arr = np.zeros(shape=shape, dtype=float)
-                        arr[::] = np.nan
-                        combined_ds[variable] = xr.DataArray(data=arr,dims=dims)
                 combined_ds.to_netcdf(combined_output_path)
                 combined_ds.close()
 

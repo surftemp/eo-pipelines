@@ -45,7 +45,9 @@ class Group(PipelineStage):
         all_datasets = self.get_spec().get_datasets()
         dataset_bands = {dataset: self.get_spec().get_bands_for_dataset(dataset) for dataset in all_datasets}
         rename = self.get_configuration().get("rename", {})
-        return { "DATASET_BANDS": dataset_bands, "OUTPUT_PATH": self.output_path, "RENAME": rename}
+        overlap_using = self.get_configuration().get("overlap_using", {})
+        return { "DATASET_BANDS": dataset_bands, "OUTPUT_PATH": self.output_path, "RENAME": rename,
+                 "OVERLAP_USING": overlap_using }
 
     def execute_stage(self, inputs):
 
@@ -62,7 +64,8 @@ class Group(PipelineStage):
             grouping_spec = {
                 "datasets": input_scenes,
                 "bands": parameters["DATASET_BANDS"],
-                "rename": parameters["RENAME"]
+                "rename": parameters["RENAME"],
+                "overlap_using": parameters["OVERLAP_USING"]
             }
             with open(grouping_spec_file_path,"w") as f:
                 f.write(json.dumps(grouping_spec))
