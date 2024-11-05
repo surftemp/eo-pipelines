@@ -69,12 +69,12 @@ def main():
                     parent_folder = args.output_folder
                 folder = os.path.join(parent_folder, name)
                 os.makedirs(folder, exist_ok=True)
-                pid += 1
 
                 if job_script_template:
                     job_script_path = os.path.join(parent_folder,job_script_filename)
                     if not os.path.exists(job_script_path):
                         s = job_script_template.replace("{working_directory}",parent_folder)
+                        s = s.replace("{pid}", str(pid))
                         if group is not None:
                             s = s.replace("{group}",str(group))
                         with open(job_script_path,"w") as f:
@@ -82,12 +82,14 @@ def main():
 
                 filename = os.path.join(folder,"pipeline.yaml")
                 with open(filename,"w") as of:
-                    d = {"working_directory":os.path.abspath(folder)}
+                    d = {"pid":str(pid), "working_directory":os.path.abspath(folder)}
                     for key in cols:
                         v = line[cols[key]]
                         d[key] = v
                     s = template.render(**d)
                     of.write(s)
+
+                pid += 1
 
         print(f"Created {pid} pipelines under {args.output_folder}")
 

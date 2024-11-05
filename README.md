@@ -10,7 +10,6 @@ Define and run pipelines to process Earth Observation (EO) data.
 | run_pipeline            | run a single pipeline                                                          |
 | run_pipelines           | run multiple pipelines sequentially                                            |
 | manage_pipelines        | monitor and launch sets of pipelines                                           |
-| query_tracking_database | explore data logged from running pipeline stages/tasks to a tracking database  |
 
 ## Installation
 

@@ -55,7 +55,6 @@ class PipelineSpec:
 
 
     def __init__(self, spec):
-        print(spec)
         try:
             self.lat_min = PipelineSpec.convert_lat_or_lon(spec["lat_min"],is_lat=True)
             self.lat_max = PipelineSpec.convert_lat_or_lon(spec["lat_max"],is_lat=True)

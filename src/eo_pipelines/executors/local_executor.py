@@ -67,7 +67,9 @@ class ExecutorThread(threading.Thread):
             env_vars = copy.deepcopy(env)
             env_vars["CONDA_PATH"] = self.conda_path
             env_vars["TMPDIR"] = self.temp_path
-            log_path = os.path.join(working_dir,task_id+".log")
+            log_folder = os.path.join(working_dir,"task-logs")
+            os.makedirs(log_folder, exist_ok=True)
+            log_path = os.path.join(log_folder, task_id+".log")
             with open(log_path,"a") as f:
                 f.write("\n\n------------------------------------\n\n")
                 cmd_s = " ".join(cmd)
@@ -97,10 +99,10 @@ class ExecutorThread(threading.Thread):
 
 class LocalExecutor(Executor):
 
-    def __init__(self, environment, stage_configuration={},tracking_database=None):
+    def __init__(self, environment, stage_configuration={}):
         self.logger = logging.getLogger("LocalExecutor")
         self.shell = environment.get("shell", "/bin/bash")
-        self.conda_path = environment.get("conda_path", "~/miniconda3/bin/conda")
+        self.conda_path = environment.get("conda_path", "~/miniforge3/bin/conda")
         self.temp_path = environment.get("temp_path", "/tmp")
         if self.temp_path != "/tmp":
             os.makedirs(self.temp_path,exist_ok=True)
@@ -109,7 +111,6 @@ class LocalExecutor(Executor):
         self.echo_stdout = stage_configuration.get("echo_stdout",False)
         self.stagger_time = stage_configuration.get("stagger_time", 0)
         self.retry_count = stage_configuration.get("retry_count", 0)
-        self.tracking_database = tracking_database
         self.pending_queue = queue.Queue()
         self.executor_threads = []
         self.task_ids = []
@@ -136,14 +137,7 @@ class LocalExecutor(Executor):
         return self.pending_queue.get()
 
     def task_started(self,task_id):
-        if self.tracking_database:
-            self.lock.acquire()
-            try:
-                (stage_id, script, env, working_dir, description, try_nr) = self.task_descriptions[task_id]
-                if self.tracking_database:
-                    self.tracking_database.track_task_start(stage_id,task_id,try_nr)
-            finally:
-                self.lock.release()
+        pass
 
     def queue_task(self, stage_id, script, env, working_dir, description="", try_nr=0, task_id=None):
         self.lock.acquire()
@@ -152,8 +146,6 @@ class LocalExecutor(Executor):
                 task_id = "task-"+uuid.uuid4().hex
                 self.submitted_count += 1
                 self.task_ids.append(task_id)
-            if self.tracking_database:
-                self.tracking_database.track_task_queued(stage_id, task_id, try_nr)
             self.pending_queue.put((stage_id,task_id,script,env, working_dir))
             self.task_descriptions[task_id] = (stage_id, script, env, working_dir, description, try_nr)
             return task_id
@@ -162,18 +154,9 @@ class LocalExecutor(Executor):
 
     def set_task_result(self, task_id, ret, timed_out, elapsed_secs):
         succeeded = (ret == 0) and not timed_out
-
         self.lock.acquire()
         try:
             (stage_id, script, env, working_dir, description, try_nr) = self.task_descriptions[task_id]
-            message = "OK"
-            if not succeeded:
-                if timed_out:
-                    message = "TIMEOUT"
-                else:
-                    message = "FAILED"
-            if self.tracking_database:
-                self.tracking_database.track_task_end(stage_id, task_id, try_nr, ret, message)
             retrying = False
             if not succeeded:
                 if try_nr < self.retry_count:

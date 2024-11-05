@@ -25,7 +25,7 @@ import logging
 import os
 import json
 
-from .run_pipeline import EOPipelineRunner
+from eo_pipelines.api.eo_pipeline_runner import EOPipelineRunner
 
 import glob
 
@@ -36,6 +36,7 @@ def main():
     parser.add_argument("--limit", type=int, default=None)
     parser.add_argument("--with-configuration", nargs=2, action="append",
                         metavar=["config-property-name", "config-property-value"])
+    parser.add_argument("--only-stages", nargs="+", metavar=["STAGE_ID"])
 
     args = parser.parse_args()
 
@@ -54,15 +55,6 @@ def main():
         os.chdir(main_folder)
         os.chdir(folder)
 
-        # check to see if this pipeline has already been run to completion
-        status_path = "eo-pipeline-status.json"
-        if os.path.exists(status_path):
-            with open(status_path) as f:
-                status = json.loads(f.read())
-                if "succeeded" in status or "failed" in status:
-                    print(f"skipping completed pipeline: {yaml_path} in folder {folder}")
-                    continue
-
         if args.with_configuration:
             for override in args.with_configuration:
                 config_property_name = override[0]
@@ -71,7 +63,7 @@ def main():
 
         # run the next pipeline
         print(f"running pipeline: {yaml_path} in folder {folder}")
-        runner.run(yaml_filename)
+        runner.run(yaml_filename, only_stages=args.only_stages)
 
         # get the result status
         result_status = "unknown"

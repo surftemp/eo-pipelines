@@ -21,61 +21,17 @@
 # SOFTWARE.
 
 import argparse
-import datetime
 import logging
-import os
 import sys
 
-from hyrrokkin.api.topology import Topology
-from hyrrokkin.utils.yaml_importer import import_from_yaml
-import tempfile
-import json
-
-schema_path = "eo_pipeline_stages"
-
-class EOPipelineRunner:
-
-    STATUS_FILENAME = "eo-pipeline-status.json"
-
-    def __init__(self):
-        self.configuration = {}
-
-    def configure(self, property_name, property_value):
-        self.configuration[property_name] = property_value
-
-    def run(self, yaml_path):
-        with tempfile.TemporaryDirectory() as tmpdirname:
-            t = Topology(tmpdirname,[schema_path])
-            with open(yaml_path) as f:
-                import_from_yaml(t, f)
-            stage_ids = t.get_node_ids()
-            status = {}
-            for (property_name,property_value) in self.configuration:
-                t.set_package_property("eo_pipelines", property_name, property_value)
-            if os.path.exists(EOPipelineRunner.STATUS_FILENAME):
-                try:
-                    with open(EOPipelineRunner.STATUS_FILENAME) as f:
-                        status = json.loads(f.read())
-                except Exception as ex:
-                    pass
-            status["running"] = datetime.datetime.now().isoformat()
-            status["stage_ids"] = stage_ids
-            with open(EOPipelineRunner.STATUS_FILENAME,"w") as of:
-                of.write(json.dumps(status, indent=4))
-            ok = t.run()
-            if ok:
-                status["succeeded"] = datetime.datetime.now().isoformat()
-            else:
-                status["failed"] =  datetime.datetime.now().isoformat()
-            with open(EOPipelineRunner.STATUS_FILENAME, "w") as of:
-                of.write(json.dumps(status, indent=4))
-            return ok
+from eo_pipelines.api.eo_pipeline_runner import EOPipelineRunner
 
 def main():
     logging.basicConfig(level=logging.INFO)
     parser = argparse.ArgumentParser()
     parser.add_argument("yaml_path")
     parser.add_argument("--with-configuration",nargs=2,action="append",metavar=["config-property-name","config-property-value"])
+    parser.add_argument("--only-stages", nargs="+", metavar=["STAGE_ID"])
     args = parser.parse_args()
     runner = EOPipelineRunner()
     if args.with_configuration:
@@ -83,9 +39,8 @@ def main():
             config_property_name = override[0]
             config_property_value = override[1]
             runner.configure(config_property_name,config_property_value)
-    if not runner.run(args.yaml_path):
+    if not runner.run(args.yaml_path, only_stages=args.only_stages):
         sys.exit(-1)
-
 
 if __name__ == '__main__':
     main()

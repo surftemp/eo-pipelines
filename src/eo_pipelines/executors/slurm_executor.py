@@ -49,7 +49,7 @@ default_jobopts = {
 
 class SlurmExecutor(Executor):
 
-    def __init__(self, environment, stage_configuration={},tracking_database=None):
+    def __init__(self, environment, stage_configuration={}):
         self.logger = logging.getLogger("SlurmExecutor")
         self.environment = environment
         self.stage_configuration = stage_configuration
@@ -58,7 +58,6 @@ class SlurmExecutor(Executor):
         self.jobs = {}
         self.job_hosts = {}
         self.task_descriptions = {}
-        self.tracking_database = tracking_database
         self.retry_count = stage_configuration.get("retry_count", 0)
         self.logger.info("Created slurm executor")
 
@@ -88,8 +87,6 @@ class SlurmExecutor(Executor):
             job_id = pyjob.cluster.submit(job)
             self.jobs[task_id] = (job_id, job, working_dir)
             self.task_descriptions[task_id] = (stage_id, script, env, working_dir, description, try_nr)
-            if self.tracking_database:
-                self.tracking_database.track_task_queued(stage_id, task_id, try_nr)
             return task_id
         finally:
             os.chdir(curdir)
@@ -103,14 +100,6 @@ class SlurmExecutor(Executor):
     def set_task_result(self, task_id, succeeded):
         self.task_results[task_id] = succeeded
         (stage_id, script, env, working_dir, description, try_nr) = self.task_descriptions[task_id]
-        if succeeded:
-            message = "OK"
-            ret = 0
-        else:
-            message = "FAILED"
-            ret = -1
-        if self.tracking_database:
-            self.tracking_database.track_task_end(stage_id, task_id, try_nr, ret, message)
         retrying = False
         if succeeded:
             self.task_ids.remove(task_id)
@@ -139,8 +128,6 @@ class SlurmExecutor(Executor):
             if job.host and not job_id in self.job_hosts:
                 self.job_hosts[job_id] = job.host
                 (stage_id, script, env, working_dir, description, try_nr) = self.task_descriptions[task_id]
-                if self.tracking_database:
-                    self.tracking_database.track_task_start(stage_id, task_id, try_nr)
             if job.result != 'UNKNOWN':
                 succeeded = job.done
                 return succeeded

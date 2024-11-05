@@ -1,0 +1,169 @@
+configuration:
+  eo_pipelines:
+    spec:
+      lat_min: "67.01.12N"
+      lat_max: "67.04.36N"
+      lon_min: "50.09.51W"
+      lon_max: "49.55.36W"
+      start_date: "2023-10-01"
+      end_date: "2023-10-10"
+      max_cloud_cover_fraction: 1
+      datasets:
+        LANDSAT_OT_C2_L1:
+          bands: [ B1,B2,B3,B4,B5,B6,B7,B9,B10,B11,QA_PIXEL ]
+        LANDSAT_OT_C2_L2:
+          bands: [ ST,ST_QA ]
+    environment:
+      working_directory: .
+      conda_path: /home/dev/miniforge3/bin/conda
+      shell: "/bin/bash"
+      echo_stdout: True
+nodes:
+  n0:
+    type: eo_pipelines:usgs_search
+    properties:
+      executor_settings:
+        can_skip: true
+  n1:
+    type: eo_pipelines:usgs_fetch
+    properties:
+      configuration:
+        output_path: fetched
+      executor_settings:
+        can_skip: true
+  n2:
+    type: eo_pipelines:landsat_import
+    properties:
+      executor_settings:
+        can_skip: 4
+        executor: local
+        local:
+          nr_threads: 1
+      configuration:
+        output_path: imported
+  n3:
+    type: eo_pipelines:xesmf_regrid
+    properties:
+      configuration:
+        target_grid_path: ../../leverett_box.nc
+        max_distance: 50
+        cache_path: regridder_cache
+        output_path: regridded
+      executor_settings:
+        can_skip: true
+        executor: local
+        local:
+          nr_threads: 1
+  n4:
+    type: eo_pipelines:group
+    properties:
+      configuration:
+        output_path: grouped
+      executor_settings:
+        can_skip: true
+  n5:
+    type: eo_pipelines:missing_filter
+    properties:
+      configuration:
+        band: B2
+        max_missing_fraction: 0.5
+      executor_settings:
+        can_skip: true
+  n6:
+    type: eo_pipelines:time_stacker
+    properties:
+      configuration:
+        output_filename: LEVERETT-L1L2-Landsat89-v2.0-fv01.0.nc
+        output_path: stacked
+      executor_settings:
+        can_skip: true
+  n7:
+    type: eo_pipelines:generate_html
+    properties:
+      configuration:
+        output_folder: html
+        title: Leverett
+        download_data: true
+        specification:
+          dimensions:
+            case: time
+            x: ni
+            y: nj
+          coordinates:
+            x: lon
+            y: lat
+            time: time
+          image:
+            grid-width: 250   # the width of the images presented in the grid view
+            max-zoom: 10      # the maximum zoom allowed in overlay view
+          info:
+            Date: "${str(data[\"time\"].data)[0:10]}"
+          derive_bands:
+            CLOUD_MASK: "not (QA_PIXEL & 14 == 0)"
+            NDWI1: "(B3-B5)/(B3+B5)"
+          layers:
+            cloud_mask:
+              label: "Cloud Mask (14)"
+              type: "mask"
+              band: "CLOUD_MASK"
+              r: 150
+              g: 150
+              b: 150
+            ST:
+              type: single
+              band: ST
+              min_value: 260
+              max_value: 325
+              cmap: coolwarm
+              data:
+                label: "ST: {value} K"
+                fixed: 2
+            "False Colour":
+              type: rgb
+              red_band: B4
+              green_band: B3
+              blue_band: B2
+            NDWI1:
+              type: single
+              band: NDWI1
+              min_value: 0
+              max_value: 1
+              cmap: PuBu
+              data:
+                "label": "NDWI1: {value}"
+                "fixed": 2
+            latitude:
+              label: Latitude
+              type: single
+              band: lat
+              min_value: 0
+              max_value: 90
+              cmap: Greys
+              data:
+                "label": "Lat: {value}"
+                "fixed": 3
+              grid_view: false
+              overlay_view: false
+            longitude:
+              label: Longitude
+              type: single
+              band: lon
+              min_value: 0
+              max_value: 90
+              cmap: Greys
+              data:
+                "label": "Lon: {value}"
+                "fixed": 3
+              grid_view: false
+              overlay_view: false
+      executor_settings:
+        can_skip: true
+
+links:
+  - n0 => n1
+  - n1 => n2
+  - n2 => n3
+  - n3 => n4
+  - n4 => n5
+  - n5 => n6
+  - n6 => n7

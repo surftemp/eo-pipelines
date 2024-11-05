@@ -19,14 +19,12 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-import datetime
+
 import os
 import logging
 import os.path
-import random
 import time
 import json
-import uuid
 
 from eo_pipelines.executors.executor_factory import ExecutorType, ExecutorFactory
 
@@ -42,7 +40,6 @@ class PipelineStage:
         self.__environment = node_services.get_configuration().get_environment()
         self.__executor_settings = node_services.get_property("executor_settings",{})
         self.__executor_factory = None
-        self.__tracking_path = None
         if "executor_type" in self.__executor_settings:
             executor_type_name = self.__executor_settings["executor_type"]
             self.__default_executor_type = ExecutorType.parse_executor_type_name(executor_type_name)
@@ -92,65 +89,12 @@ class PipelineStage:
     def __repr__(self):
         return self.__stage_id+"/"+self.__stage_type
 
-    def check_concurrency_limit(self):
-        concurrency_limit = self.__executor_settings.get("concurrent_execution_limit",None)
-        if concurrency_limit is None:
-            return # execute immediately
-
-        tracking_folder = concurrency_limit.get("tracking_folder",None)
-        limit = concurrency_limit.get("limit",1)
-        tracking_filename = str(uuid.uuid4())+".id"
-        if not tracking_folder:
-            raise Exception("Unable to enforce concurrent_execution_limit, tracking_folder not specified")
-        os.makedirs(tracking_folder,exist_ok=True)
-
-        def wait_for_slot():
-            while True:
-                files = [f for f in os.listdir(tracking_folder) if f.endswith(".id")]
-                if len(files) >= limit:
-                    # wait here
-                    time.sleep(random.random()+2*PipelineStage.CONCURRENT_EXECUTION_CHECK_AVG_INTERVAL_S)
-                else:
-                    break
-
-        self.__tracking_path = os.path.join(tracking_folder,tracking_filename)
-
-        dawdle_start_time = time.time()
-        self.__logger.info("Limiting concurrency for stage %s " % self.__stage_type)
-
-        while True:
-
-            wait_for_slot()
-
-            # claim the slot
-            with open(self.__tracking_path,"w") as f:
-                f.write(str(datetime.datetime.utcnow()))
-
-            # wait a short while and recheck for collision
-            time.sleep(10*random.random())
-
-            # recheck for unlikely contention with another execution
-            files = [f for f in os.listdir(tracking_folder) if f.endswith(".id")]
-            if len(files) > limit:
-                # back off and retry
-                os.remove(self.__tracking_path)
-            else:
-                break
-
-        dawdle_duration = int(time.time() - dawdle_start_time)
-        self.__logger.info("Limit concurrency delay for stage %s complete (%d seconds)" % (self.__stage_type, dawdle_duration))
-
-    def release_tracking(self):
-        if self.__tracking_path:
-            os.remove(self.__tracking_path)
-
     async def run(self,inputs):
         start_time = time.time()
         can_skip = self.__executor_settings.get("can_skip", False)
         results_path = os.path.join(self.__working_directory,"results.json")
         try:
             if not can_skip or not os.path.exists(results_path):
-                self.check_concurrency_limit()
                 self.__logger.info("Executing stage %s " % self.__stage_type)
                 result = self.execute_stage(inputs)
                 with open(results_path,"w") as of:
@@ -165,8 +109,6 @@ class PipelineStage:
             duration = int(time.time() - start_time)
             self.__logger.info("Failed stage %s with %s (%d seconds)" % (self.__stage_type, str(ex), duration))
             raise
-        finally:
-            self.release_tracking()
 
         return result
 
