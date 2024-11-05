@@ -25,10 +25,10 @@ mamba install xarray netcdf4 pyproj requests pandas pillow shapely scipy scikit-
 
 ## Dependencies
 
-The following dependencies need to be installed: hyrrokkin, pyjob libraries
+The following dependencies need to be installed into the eo_pipelines_env environment, see their READMEs for more information: 
 
-- https://github.com/surftemp/pyjob
-- https://github.com/visualtopology/hyrrokkin
+* hyrrokkin - https://github.com/visualtopology/hyrrokkin
+* pyjob libraries - https://github.com/surftemp/pyjob
 
 ## Defining Pipelines
 
@@ -146,22 +146,22 @@ Most nodes execute themselves by launching one or more tasks, which can be run o
 Pipleline stages currently supported:
 
 | stage_name          | purpose                                                                                     | required conda environment |
-|---------------------|---------------------------------------------------------------------------------------------|-----------------------|
-| **usgs_search**     | find landsat scenes using the usgs tool                                                     | usgs_env              |
-| **usgs_fetch**      | download landsat scenes using the usgs_download tool                                        | usgs_env              |
-| **landsat_import**  | convert landsat scenes to netcdf4                                                           | landsat_importer_env  |
-| **xesmf_regrid**    | regrid scenes onto a target grid using XESMF                                                | xarray_regridder_env  |
-| **regrid**          | regrid scenes onto a target grid using xarray_regridder                                     | xarray_regridder_env  |  
-| **group**           | combine/stack scenes from the same orbit (also across different datasets) after regridding  | eo_pipelines_env      | 
-| **metadata_tweaker** | output a netcdf4 with adjusted metadata for each input file                                | eo_pipelines_env      |
-| **time_stacker**    | combine a number of separate netcdf4 files into one file by appending along the time access | eo_pipelines_env      | 
-| **add_masks**       | add mask layers defined by geojson files                                                    | eo_pipelines_env      |
-| **add_spatial**     | add spatial layers defined by netcdf4 files                                                 | eo_pipelines_env      |
-| **generate_html**   | create an interactive static HTML website for exploring netcdf files                        | eo_pipelines_env      |
+|---------------------|---------------------------------------------------------------------------------------------|----------------------------|
+| **usgs_search**     | find landsat scenes using the usgs tool                                                     | usgs_env                   |
+| **usgs_fetch**      | download landsat scenes using the usgs_download tool                                        | usgs_env                   |
+| **landsat_import**  | convert landsat scenes to netcdf4                                                           | landsat_importer_env       |
+| **xesmf_regrid**    | regrid scenes onto a target grid using XESMF                                                | xarray_regridder_env       |
+| **regrid**          | regrid scenes onto a target grid using xarray_regridder                                     | xarray_regridder_env       |  
+| **group**           | combine/stack scenes from the same orbit (also across different datasets) after regridding  | eo_pipelines_env           | 
+| **metadata_tweaker** | output a netcdf4 with adjusted metadata for each input file                                | eo_pipelines_env           |
+| **time_stacker**    | combine a number of separate netcdf4 files into one file by appending along the time access | eo_pipelines_env           | 
+| **add_masks**       | add mask layers defined by geojson files                                                    | eo_pipelines_env           |
+| **add_spatial**     | add spatial layers defined by netcdf4 files                                                 | eo_pipelines_env           |
+| **generate_html**   | create an interactive static HTML website for exploring netcdf files                        | netcdf_explorer_env        |
 
 ## Required conda environments
 
-Each of the above stages requires a conda environment and specific tools installed into it.  For details on how to create these see:
+Each of the above stages requires a conda environment and specific tools installed into it.  If the required conda environment is `eo_pipelines_env` these tools are already installed, otherwise for details on how to create these see:
 
 ### usgs_env 
 
@@ -176,6 +176,10 @@ See https://github.com/surftemp/landsat_importer
 ### xarray_regridder_env
 
 https://github.com/surftemp/xarray_regridder
+
+### netcdf_explorer_env
+
+https://github.com/surftemp/netcdf_explorer
 
 ## Running pipelines
 
