@@ -110,6 +110,31 @@ suffix_map = {
     }
 }
 
+# for supported datasets, map from channel name to a unique file suffix
+excldue_suffix_map = {
+
+    "LANDSAT_OT_C2_L1": {
+    },
+
+    "LANDSAT_OT_C2_L2": {
+    },
+
+    "LANDSAT_ETM_C2_L1": {
+        "B1" : "_GM_B1.TIF",
+        "B2" : "_GM_B2.TIF",
+        "B3" : "_GM_B3.TIF",
+        "B4" : "_GM_B4.TIF",
+        "B5" : "_GM_B5.TIF",
+        "B6_1" : "_GM_B6_VCID_1.TIF",
+        "B6_2" : "_GM_B6_VCID_2.TIF",
+        "B7" : "_GM_B7.TIF",
+        "B8" : "_GM_B8.TIF"
+    },
+
+    "LANDSAT_ETM_C2_L2": {
+    }
+}
+
 class Fetch(PipelineStage):
 
     VERSION = "0.0.2"
@@ -145,7 +170,7 @@ class Fetch(PipelineStage):
     def execute_stage(self,inputs):
 
         usgs_username = os.getenv("USGS_USERNAME")
-        usgs_password = os.getenv("USGS_PASSWORD")
+        usgs_token = os.getenv("USGS_TOKEN")
 
         limit = self.get_configuration().get("limit",None)
 
@@ -155,8 +180,8 @@ class Fetch(PipelineStage):
         if file_cache_index != "":
             file_cache_index = "--file-cache-index "+file_cache_index
 
-        if not no_download and (not usgs_password or not usgs_username):
-            raise Exception("Please set environment variables USGS_USERNAME and USGS_PASSWORD")
+        if not no_download and (not usgs_token or not usgs_username):
+            raise Exception("Please set environment variables USGS_USERNAME and USGS_TOKEN")
 
         error_fraction_threshold = self.get_configuration().get("error_fraction_threshold",0.01)
 
@@ -190,10 +215,19 @@ class Fetch(PipelineStage):
                         required_bands = self.get_spec().get_bands_for_dataset(dataset)
 
                         suffix_mapping = suffix_map.get(dataset, {})
+
                         suffixes = [".XML"]
+
                         for band_name in suffix_mapping:
                             if len(required_bands)==0 or band_name in required_bands:
                                 suffixes.append(suffix_mapping[band_name])
+
+                        # for each suffix, add _GM_+suffix to exclude L7 gap mask files
+                        exclude_suffixes = []
+                        exclude_suffix_mapping = excldue_suffix_map.get(dataset,{})
+                        for band_name in exclude_suffix_mapping:
+                            if len(required_bands)==0 or band_name in required_bands:
+                                exclude_suffixes.append(exclude_suffix_mapping[band_name])
 
                         dataset_output_folder = os.path.join(self.output_path,dataset)
                         os.makedirs(dataset_output_folder, exist_ok=True)
@@ -205,10 +239,11 @@ class Fetch(PipelineStage):
 
                         custom_env = {
                                 "USGS_USERNAME": usgs_username,
-                                "USGS_PASSWORD": usgs_password,
+                                "USGS_TOKEN": usgs_token,
                                 "USGS_DATADIR": self.output_path,
                                 "SCENES_CSV_PATH": scenes_csv_path,
                                 "SUFFIXES": " ".join(suffixes),
+                                "EXCLUDE_SUFFIXES": " -x "+" ".join(exclude_suffixes) if len(exclude_suffixes) else "",
                                 "OUTPUT_FOLDER": dataset_output_folder,
                                 "DOWNLOAD_FOLDER": dataset_download_folder,
                                 "FILE_CACHE_INDEX": file_cache_index,
@@ -231,7 +266,7 @@ class Fetch(PipelineStage):
                                 [entity_id,filename] = line
                                 entity_ids.add(entity_id)
                                 if not os.path.isfile(os.path.join(dataset_output_folder,filename)):
-                                    failed_entity_ids.add(entity_ids)
+                                    failed_entity_ids.add(entity_id)
 
                             if len(entity_ids):
                                 error_fraction = len(failed_entity_ids)/len(entity_ids)

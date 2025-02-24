@@ -84,7 +84,9 @@ class Regrid(PipelineStage):
                     for input_path in input_paths:
                         custom_env = self.get_parameters()
                         custom_env["INPUT_PATH"] = input_path
-                        custom_env["OUTPUT_PATH"] = dataset_output_folder
+                        input_filename = os.path.split(input_path)[-1]
+                        output_path = os.path.join(dataset_output_folder,input_filename)
+                        custom_env["OUTPUT_PATH"] = output_path
                         script = os.path.join(os.path.split(__file__)[0], "..", "scripts", "regrid.sh")
                         task_id = executor.queue_task(self.get_stage_id(),script, custom_env, self.get_working_directory(),
                                                   description=os.path.split(input_path)[-1])

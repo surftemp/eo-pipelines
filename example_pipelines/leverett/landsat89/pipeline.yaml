@@ -15,7 +15,7 @@ configuration:
           bands: [ ST,ST_QA ]
     environment:
       working_directory: .
-      conda_path: /home/dev/miniforge3/bin/conda
+      conda_path: /home/users/niallmcc/miniforge3/bin/conda
       shell: "/bin/bash"
       echo_stdout: True
 nodes:

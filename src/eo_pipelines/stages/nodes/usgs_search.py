@@ -98,10 +98,10 @@ class USGS_Search(PipelineStage):
     def execute_stage(self,inputs):
 
         usgs_username = os.getenv("USGS_USERNAME")
-        usgs_password = os.getenv("USGS_PASSWORD")
+        usgs_token = os.getenv("USGS_TOKEN")
 
-        if not usgs_password or not usgs_username:
-            raise Exception("Please set environment variables USGS_USERNAME and USGS_PASSWORD")
+        if not usgs_token or not usgs_username:
+            raise Exception("Please set environment variables USGS_USERNAME and USGS_TOKEN")
 
         parameters = self.get_parameters()
 
@@ -139,7 +139,7 @@ class USGS_Search(PipelineStage):
 
                 custom_env = {
                         "USGS_USERNAME": usgs_username,
-                        "USGS_PASSWORD": usgs_password,
+                        "USGS_TOKEN": usgs_token,
                         "USGS_DATADIR": self.output_path,
                         "SCENES_CSV_PATH": scenes_csv_path,
                         "DATASET": dataset

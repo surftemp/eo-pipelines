@@ -63,17 +63,7 @@ def main():
 
         # run the next pipeline
         print(f"running pipeline: {yaml_path} in folder {folder}")
-        runner.run(yaml_filename, only_stages=args.only_stages)
-
-        # get the result status
-        result_status = "unknown"
-        if os.path.exists(status_path):
-            with open(status_path) as f:
-                status = json.loads(f.read())
-                if "succeeded" in status:
-                    result_status = "success"
-                elif "failed" in status:
-                    result_status = "failed"
+        result_status = runner.run(yaml_filename, only_stages=args.only_stages)
 
         ran += 1
         print(f"completed pipeline: {yaml_path} in folder {folder} with result {result_status}")

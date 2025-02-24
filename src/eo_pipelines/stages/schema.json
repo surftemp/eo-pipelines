@@ -81,7 +81,7 @@
             },
             "classname": "nodes.landsat_import.LandsatImport"
         },
-                "xesmf_regrid": {
+        "xesmf_regrid": {
             "metadata": {
                 "name": "Regrid",
                 "description": "Regrid scenes to a target grid"
