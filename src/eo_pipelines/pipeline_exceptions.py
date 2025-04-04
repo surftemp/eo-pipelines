@@ -1,6 +1,6 @@
 # MIT License
 #
-# Copyright (c) 2022 National Center for Earth Observation (NCEO)
+# Copyright (c) 2022-2025 National Center for Earth Observation (NCEO)
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -25,10 +25,12 @@ class PipelineSetupException(Exception):
     def __init__(self, msg):
         super().__init__(msg)
 
+
 class PipelineStageException(Exception):
 
     def __init__(self, stage, msg):
-        super().__init__("%s: %s"%(stage,msg))
+        super().__init__("%s: %s" % (stage, msg))
+
 
 class PipelineExecutorException(Exception):
 

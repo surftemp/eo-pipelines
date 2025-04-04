@@ -1,6 +1,6 @@
 # MIT License
 #
-# Copyright (c) 2022 National Center for Earth Observation (NCEO)
+# Copyright (c) 2022-2025 National Center for Earth Observation (NCEO)
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -25,8 +25,8 @@ import os.path
 from eo_pipelines.pipeline_stage import PipelineStage
 from eo_pipelines.pipeline_stage_utils import format_int
 
-class GenerateHtml(PipelineStage):
 
+class GenerateHtml(PipelineStage):
     VERSION = "0.0.1"
 
     def __init__(self, node_services):
@@ -42,18 +42,18 @@ class GenerateHtml(PipelineStage):
 
     def get_parameters(self):
         parameters = {}
-        title = self.get_configuration().get("title","")
+        title = self.get_configuration().get("title", "")
         if title:
             parameters["TITLE"] = str(title)
         return parameters
 
     def build_options(self):
         options = ""
-        for option in ["sample-count","sample-cases"]:
-            option_value = self.get_configuration().get(option,"")
+        for option in ["sample-count", "sample-cases"]:
+            option_value = self.get_configuration().get(option, "")
             if option_value:
                 options += f' --{option} {option_value}'
-        if self.get_configuration().get("download_data",False):
+        if self.get_configuration().get("download_data", False):
             options += " --download-data"
         return options
 
@@ -65,14 +65,14 @@ class GenerateHtml(PipelineStage):
         succeeded = 0
         failed = 0
 
-        layer_config_path = os.path.join(self.get_working_directory(),"layers.json")
+        layer_config_path = os.path.join(self.get_working_directory(), "layers.json")
 
         import json
-        with open(layer_config_path,"w") as f:
+        with open(layer_config_path, "w") as f:
             f.write(json.dumps(self.get_configuration().get("specification")))
 
         if self.output_folder:
-            os.makedirs(self.output_folder,exist_ok=True)
+            os.makedirs(self.output_folder, exist_ok=True)
 
         options = self.build_options()
 
@@ -85,14 +85,14 @@ class GenerateHtml(PipelineStage):
                 input_paths = []
                 for fname in os.listdir(input_folder):
                     if fname.endswith(".nc"):
-                        input_paths.append(os.path.join(input_folder,fname))
+                        input_paths.append(os.path.join(input_folder, fname))
 
                 for input_path in input_paths:
 
                     filename_root = os.path.splitext(os.path.split(input_path)[1])[0]
 
-                    output_path = os.path.join(self.output_folder,filename_root)
-                    os.makedirs(output_path,exist_ok=True)
+                    output_path = os.path.join(self.output_folder, filename_root)
+                    os.makedirs(output_path, exist_ok=True)
 
                     script = os.path.join(os.path.split(__file__)[0], "..", "scripts", "generate_html.sh")
 
@@ -108,7 +108,7 @@ class GenerateHtml(PipelineStage):
                     if "TITLE" not in custom_env:
                         custom_env["TITLE"] = filename_root
 
-                    task_id = executor.queue_task(self.get_stage_id(),script, custom_env, self.get_working_directory(),
+                    task_id = executor.queue_task(self.get_stage_id(), script, custom_env, self.get_working_directory(),
                                                   description=dataset)
 
                     executor.wait_for_tasks()
@@ -133,5 +133,3 @@ class GenerateHtml(PipelineStage):
         if failed > 0:
             raise Exception("Failed")
         return {}
-
-

@@ -1,6 +1,6 @@
 # MIT License
 #
-# Copyright (c) 2022 National Center for Earth Observation (NCEO)
+# Copyright (c) 2022-2025 National Center for Earth Observation (NCEO)
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -28,7 +28,7 @@ from mako.template import Template
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("template_path",help="path to file containing pipeline template")
+    parser.add_argument("template_path", help="path to file containing pipeline template")
     parser.add_argument("parameters_path", help="path to csv file containing parameters")
     parser.add_argument("output_folder", help="path to folder in which output pipelines are to be constructed")
     parser.add_argument("--groups", type=int,
@@ -60,29 +60,29 @@ def main():
                 for idx in range(len(line)):
                     cols[line[idx]] = idx
             else:
-                name = "pipeline"+str(pid)
+                name = "pipeline" + str(pid)
                 group = None
                 if args.groups is not None:
                     group = pid % args.groups
-                    parent_folder = os.path.join(args.output_folder,f"group{group}")
+                    parent_folder = os.path.join(args.output_folder, f"group{group}")
                 else:
                     parent_folder = args.output_folder
                 folder = os.path.join(parent_folder, name)
                 os.makedirs(folder, exist_ok=True)
 
                 if job_script_template:
-                    job_script_path = os.path.join(parent_folder,job_script_filename)
+                    job_script_path = os.path.join(parent_folder, job_script_filename)
                     if not os.path.exists(job_script_path):
-                        s = job_script_template.replace("{working_directory}",parent_folder)
+                        s = job_script_template.replace("{working_directory}", parent_folder)
                         s = s.replace("{pid}", str(pid))
                         if group is not None:
-                            s = s.replace("{group}",str(group))
-                        with open(job_script_path,"w") as f:
+                            s = s.replace("{group}", str(group))
+                        with open(job_script_path, "w") as f:
                             f.write(s)
 
-                filename = os.path.join(folder,"pipeline.yaml")
-                with open(filename,"w") as of:
-                    d = {"pid":str(pid), "working_directory":os.path.abspath(folder)}
+                filename = os.path.join(folder, "pipeline.yaml")
+                with open(filename, "w") as of:
+                    d = {"pid": str(pid), "working_directory": os.path.abspath(folder)}
                     for key in cols:
                         v = line[cols[key]]
                         d[key] = v
@@ -92,6 +92,7 @@ def main():
                 pid += 1
 
         print(f"Created {pid} pipelines under {args.output_folder}")
+
 
 if __name__ == '__main__':
     main()

@@ -1,6 +1,6 @@
 # MIT License
 #
-# Copyright (c) 2022 National Center for Earth Observation (NCEO)
+# Copyright (c) 2022-2025 National Center for Earth Observation (NCEO)
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -22,6 +22,7 @@
 
 import copy
 
+
 def merge_dictionaries_recursive(d1, d2):
     """
     Perform a deep recursive merge of two dictionaries.  The first dictionary (d1) takes
@@ -35,14 +36,14 @@ def merge_dictionaries_recursive(d1, d2):
         return copy.deepcopy(d2)
     if d2 is None:
         return copy.deepcopy(d1)
-    if not isinstance(d1,dict) or not isinstance(d2,dict):
+    if not isinstance(d1, dict) or not isinstance(d2, dict):
         return copy.deepcopy(d1)
     merged = {}
     for key in d1:
         if key not in d2:
             merged[key] = copy.deepcopy(d1[key])
         else:
-            merged[key] = merge_dictionaries_recursive(d1[key],d2[key])
+            merged[key] = merge_dictionaries_recursive(d1[key], d2[key])
     for key in d2:
         if key not in d1:
             merged[key] = copy.deepcopy(d2[key])

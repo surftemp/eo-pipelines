@@ -1,6 +1,6 @@
 # MIT License
 #
-# Copyright (c) 2022 National Center for Earth Observation (NCEO)
+# Copyright (c) 2022-2025 National Center for Earth Observation (NCEO)
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -26,7 +26,6 @@ from eo_pipelines.pipeline_stage import PipelineStage
 
 
 class AddSpatial(PipelineStage):
-
     VERSION = "0.0.1"
 
     def __init__(self, node_services):
@@ -42,8 +41,8 @@ class AddSpatial(PipelineStage):
 
     def get_parameters(self):
         params = {}
-        dataset_path = self.get_configuration().get("dataset_path","")
-        dataset_variables = self.get_configuration().get("dataset_variables",[])
+        dataset_path = self.get_configuration().get("dataset_path", "")
+        dataset_variables = self.get_configuration().get("dataset_variables", [])
         params["DATASET_PATH"] = dataset_path
         params["DATASET_VARIABLES"] = " ".join(dataset_variables)
         return params
@@ -58,7 +57,7 @@ class AddSpatial(PipelineStage):
         failed = 0
 
         if self.output_folder:
-            os.makedirs(self.output_folder,exist_ok=True)
+            os.makedirs(self.output_folder, exist_ok=True)
 
         for input in inputs["input"]:
 
@@ -66,17 +65,17 @@ class AddSpatial(PipelineStage):
 
                 custom_env = self.get_parameters()
                 input_folder = input[dataset]
-                output_folder = os.path.abspath(os.path.join(self.output_folder,dataset))
-                os.makedirs(output_folder,exist_ok=True)
+                output_folder = os.path.abspath(os.path.join(self.output_folder, dataset))
+                os.makedirs(output_folder, exist_ok=True)
 
                 for fname in os.listdir(input_folder):
                     if fname.endswith(".nc"):
-                        custom_env["INPUT_PATH"] = os.path.join(input_folder,fname)
+                        custom_env["INPUT_PATH"] = os.path.join(input_folder, fname)
                         custom_env["OUTPUT_PATH"] = os.path.join(output_folder, fname)
 
                         script = os.path.join(os.path.split(__file__)[0], "..", "scripts", "add_spatial.sh")
 
-                        task_id = executor.queue_task(self.get_stage_id(),script, custom_env,
+                        task_id = executor.queue_task(self.get_stage_id(), script, custom_env,
                                                       self.get_working_directory(), description=dataset)
 
                         executor.wait_for_tasks()
@@ -98,6 +97,4 @@ class AddSpatial(PipelineStage):
             else:
                 self.get_logger().warn(summary)
 
-        return {"output":output_scenes}
-
-
+        return {"output": output_scenes}

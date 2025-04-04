@@ -1,6 +1,6 @@
 # MIT License
 #
-# Copyright (c) 2022 National Center for Earth Observation (NCEO)
+# Copyright (c) 2022-2025 National Center for Earth Observation (NCEO)
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -26,7 +26,6 @@ from eo_pipelines.pipeline_stage import PipelineStage
 
 
 class MetadataTweaker(PipelineStage):
-
     VERSION = "0.0.1"
 
     def __init__(self, node_services):
@@ -50,13 +49,13 @@ class MetadataTweaker(PipelineStage):
         failed = 0
 
         if self.output_folder:
-            os.makedirs(self.output_folder,exist_ok=True)
+            os.makedirs(self.output_folder, exist_ok=True)
 
         config_path = os.path.join(self.get_working_directory(), "config.json")
 
         import json
         with open(config_path, "w") as f:
-            f.write(json.dumps(self.get_configuration().get("specification",{})))
+            f.write(json.dumps(self.get_configuration().get("specification", {})))
 
         for input in inputs["input"]:
 
@@ -70,15 +69,16 @@ class MetadataTweaker(PipelineStage):
                 for fname in os.listdir(input_folder):
                     if fname.endswith(".nc"):
                         custom_env = self.get_parameters()
-                        custom_env["INPUT_PATH"] = os.path.join(input_folder,fname)
+                        custom_env["INPUT_PATH"] = os.path.join(input_folder, fname)
                         output_path = os.path.join(self.output_folder, dataset, fname)
                         custom_env["OUTPUT_PATH"] = output_path
                         custom_env["CONFIG_PATH"] = config_path
 
                         script = os.path.join(os.path.split(__file__)[0], "..", "scripts", "metadata_tweaker.sh")
 
-                        task_id = executor.queue_task(self.get_stage_id(),script, custom_env, self.get_working_directory(),
-                                                  description=dataset)
+                        task_id = executor.queue_task(self.get_stage_id(), script, custom_env,
+                                                      self.get_working_directory(),
+                                                      description=dataset)
 
                         task_ids.append(task_id)
 
@@ -104,6 +104,4 @@ class MetadataTweaker(PipelineStage):
             else:
                 self.get_logger().warn(summary)
 
-        return {"output":output_scenes}
-
-
+        return {"output": output_scenes}

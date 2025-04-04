@@ -1,6 +1,6 @@
 # MIT License
 #
-# Copyright (c) 2022 National Center for Earth Observation (NCEO)
+# Copyright (c) 2022-2025 National Center for Earth Observation (NCEO)
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -29,13 +29,12 @@ from eo_pipelines.pipeline_stage_utils import format_int, format_float
 
 
 class LandsatImport(PipelineStage):
-
     VERSION = "0.0.2"
 
     DEFAULT_RESOLUTION = 50
 
     def __init__(self, node_services):
-        super().__init__(node_services,"landsat_import")
+        super().__init__(node_services, "landsat_import")
         self.node_services = node_services
 
         self.output_path = self.get_configuration().get("output_path", None)
@@ -61,13 +60,11 @@ class LandsatImport(PipelineStage):
 
         output_scenes = {}
 
-
-
         inject_metadata = self.get_configuration().get("inject_metadata", None)
         inject_metadata_cmd = ""
         if inject_metadata is not None:
             inject_metadata_cmd = "--inject-metadata"
-            for (key,value) in inject_metadata.items():
+            for (key, value) in inject_metadata.items():
                 inject_metadata_cmd += f" {key}=\"{value}\""
 
         error_fraction_threshold = self.get_configuration().get("error_fraction_threshold", 0.01)
@@ -85,15 +82,14 @@ class LandsatImport(PipelineStage):
                 dataset_folder = input[dataset]
                 for filename in os.listdir(dataset_folder):
                     if filename.endswith("xml"):
-                        metadata_paths.append(os.path.join(dataset_folder,filename))
+                        metadata_paths.append(os.path.join(dataset_folder, filename))
 
-                dataset_output_folder = os.path.join(self.output_path,dataset)
+                dataset_output_folder = os.path.join(self.output_path, dataset)
                 os.makedirs(dataset_output_folder, exist_ok=True)
                 output_scenes[dataset] = dataset_output_folder
                 task_ids = []
                 if metadata_paths:
                     for metadata_path in metadata_paths:
-
                         metadata_id = os.path.splitext(os.path.split(metadata_path)[1])[0]
                         custom_env = self.get_parameters()
                         custom_env["BANDS"] = " ".join(self.get_spec().get_bands_for_dataset(dataset))
@@ -102,10 +98,10 @@ class LandsatImport(PipelineStage):
                         custom_env["INJECT_METADATA"] = inject_metadata_cmd
 
                         script = os.path.join(os.path.split(__file__)[0], "..", "scripts", "landsat_import.sh")
-                        task_id = executor.queue_task(self.get_stage_id(),script, custom_env, self.get_working_directory(),
-                                                  description=metadata_id)
+                        task_id = executor.queue_task(self.get_stage_id(), script, custom_env,
+                                                      self.get_working_directory(),
+                                                      description=metadata_id)
                         task_ids.append(task_id)
-
 
                     executor.wait_for_tasks()
                     for task_id in task_ids:
@@ -114,15 +110,14 @@ class LandsatImport(PipelineStage):
                         else:
                             failed += 1
 
-                    error_fraction = failed/(succeeded+failed)
+                    error_fraction = failed / (succeeded + failed)
                     if error_fraction > error_fraction_threshold:
-                        raise Exception(f"Failed to import dataset {dataset}: error fraction {error_fraction} > threshold {error_fraction_threshold}")
+                        raise Exception(
+                            f"Failed to import dataset {dataset}: error fraction {error_fraction} > threshold {error_fraction_threshold}")
 
                     total_succeeded += succeeded
                     total_failed += failed
 
         self.get_logger().info(f"landsat import scenes: succeeded:{total_succeeded}, failed:{total_failed}")
 
-        return {"output":output_scenes}
-
-
+        return {"output": output_scenes}

@@ -1,6 +1,6 @@
 # MIT License
 #
-# Copyright (c) 2022 National Center for Earth Observation (NCEO)
+# Copyright (c) 2022-2025 National Center for Earth Observation (NCEO)
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -24,8 +24,8 @@ import os.path
 
 from eo_pipelines.pipeline_stage import PipelineStage
 
-class TimeStacker(PipelineStage):
 
+class TimeStacker(PipelineStage):
     VERSION = "0.0.1"
 
     def __init__(self, node_services):
@@ -35,14 +35,15 @@ class TimeStacker(PipelineStage):
         self.output_folder = self.get_configuration().get("output_folder", "stacked_output")
 
         if not os.path.isabs(self.output_folder):
-            self.output_folder = os.path.join(self.get_working_directory(),self.output_folder)
+            self.output_folder = os.path.join(self.get_working_directory(), self.output_folder)
 
         self.get_logger().info("TimeStacker %s" % TimeStacker.VERSION)
 
     def get_parameters(self):
         parameters = {}
         if "stack_attributes" in self.get_configuration():
-            parameters["STACK_ATTRIBUTES"] = "--stack-attributes " + " ".join(self.get_configuration()["stack_attributes"])
+            parameters["STACK_ATTRIBUTES"] = "--stack-attributes " + " ".join(
+                self.get_configuration()["stack_attributes"])
         if "keep_attributes" in self.get_configuration():
             parameters["KEEP_ATTRIBUTES"] = "--keep-attributes " + " ".join(self.get_configuration()["keep_attributes"])
 
@@ -51,14 +52,14 @@ class TimeStacker(PipelineStage):
     def execute_stage(self, inputs):
 
         executor = self.create_executor()
-        output_filename = self.get_configuration().get("output_filename","stacked.nc")
+        output_filename = self.get_configuration().get("output_filename", "stacked.nc")
 
         output_scenes = {}
 
         succeeded = 0
         failed = 0
 
-        os.makedirs(self.output_folder,exist_ok=True)
+        os.makedirs(self.output_folder, exist_ok=True)
 
         for input in inputs["input"]:
 
@@ -68,9 +69,9 @@ class TimeStacker(PipelineStage):
                 input_path = input[dataset]
                 custom_env["INPUT_FOLDER"] = input_path
 
-                dataset_output_folder = os.path.join(self.output_folder,dataset)
+                dataset_output_folder = os.path.join(self.output_folder, dataset)
                 os.makedirs(dataset_output_folder, exist_ok=True)
-                output_path = os.path.join(dataset_output_folder,output_filename)
+                output_path = os.path.join(dataset_output_folder, output_filename)
 
                 custom_env["OUTPUT_PATH"] = output_path
 
@@ -82,7 +83,7 @@ class TimeStacker(PipelineStage):
                 if count:
 
                     script = os.path.join(os.path.split(__file__)[0], "..", "scripts", "time_stacker.sh")
-                    task_id = executor.queue_task(self.get_stage_id(),script, custom_env, self.get_working_directory(),
+                    task_id = executor.queue_task(self.get_stage_id(), script, custom_env, self.get_working_directory(),
                                                   description=os.path.split(input_path)[-1])
 
                     executor.wait_for_tasks()
@@ -93,6 +94,4 @@ class TimeStacker(PipelineStage):
                     else:
                         failed += 1
 
-        return {"output":output_scenes}
-
-
+        return {"output": output_scenes}

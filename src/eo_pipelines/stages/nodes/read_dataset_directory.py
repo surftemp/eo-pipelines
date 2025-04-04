@@ -1,6 +1,6 @@
 # MIT License
 #
-# Copyright (c) 2022 National Center for Earth Observation (NCEO)
+# Copyright (c) 2022-2025 National Center for Earth Observation (NCEO)
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -25,14 +25,14 @@ import shutil
 
 from eo_pipelines.pipeline_stage import PipelineStage
 
-class ReadDatasetDirectory(PipelineStage):
 
+class ReadDatasetDirectory(PipelineStage):
     VERSION = "0.0.2"
 
     DEFAULT_RESOLUTION = 50
 
     def __init__(self, node_services):
-        super().__init__(node_services,"read_dataset_directory")
+        super().__init__(node_services, "read_dataset_directory")
         self.node_services = node_services
         self.output_path = self.get_configuration().get("output_path", None)
         if self.output_path is None:
@@ -50,10 +50,7 @@ class ReadDatasetDirectory(PipelineStage):
 
         if os.path.isfile(dataset_directory):
             filename = os.path.split(dataset_directory)[-1]
-            shutil.copyfile(dataset_directory,os.path.join(self.output_path,filename))
+            shutil.copyfile(dataset_directory, os.path.join(self.output_path, filename))
             return {"output": {dataset_name: self.output_path}}
         else:
-            return {"output": { dataset_name: dataset_directory }}
-
-
-
+            return {"output": {dataset_name: dataset_directory}}

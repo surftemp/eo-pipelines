@@ -1,6 +1,6 @@
 # MIT License
 #
-# Copyright (c) 2022 National Center for Earth Observation (NCEO)
+# Copyright (c) 2022-2025 National Center for Earth Observation (NCEO)
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -31,8 +31,8 @@ from hyrrokkin.utils.yaml_importer import import_from_yaml
 
 schema_path = "eo_pipelines.stages"
 
-class EOPipelineRunner:
 
+class EOPipelineRunner:
     STATUS_FILENAME = "eo-pipeline-status.json"
 
     def __init__(self):
@@ -67,9 +67,9 @@ class EOPipelineRunner:
                 self.status["executed_stages"].append(node_id)
             else:
                 self.status["stage_failures"][node_id] = str(exn)
-            start_time = self.stage_start_times.get(node_id,None)
+            start_time = self.stage_start_times.get(node_id, None)
             if start_time:
-                duration = timestamp-start_time
+                duration = timestamp - start_time
                 self.status["stage_durations"][node_id] = duration
 
         self.save_status()
@@ -77,8 +77,9 @@ class EOPipelineRunner:
     def run(self, yaml_path, only_stages=None):
         with tempfile.TemporaryDirectory() as tmpdirname:
 
-            t = Topology(tmpdirname,[schema_path],
-                         execution_handler=lambda timestamp, node_id, state, exception, is_manual: self.track_execution(timestamp, node_id, state, exception))
+            t = Topology(tmpdirname, [schema_path],
+                         execution_handler=lambda timestamp, node_id, state, exception, is_manual: self.track_execution(
+                             timestamp, node_id, state, exception))
 
             for (property_name, property_value) in self.configuration:
                 t.set_package_property("eo_pipelines", property_name, property_value)
@@ -104,7 +105,7 @@ class EOPipelineRunner:
                 if "failed" in self.status:
                     del self.status["failed"]
             else:
-                self.status["failed"] =  datetime.datetime.now().isoformat()
+                self.status["failed"] = datetime.datetime.now().isoformat()
                 if "succeeded" in self.status:
                     del self.status["succeeded"]
 

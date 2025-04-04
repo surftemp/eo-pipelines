@@ -1,6 +1,6 @@
 # MIT License
 #
-# Copyright (c) 2022 National Center for Earth Observation (NCEO)
+# Copyright (c) 2022-2025 National Center for Earth Observation (NCEO)
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -47,7 +47,7 @@ def main():
     # collect the input paths
     paths = []
     for input_path in args.input_paths:
-        paths += glob.glob(input_path,recursive=True)
+        paths += glob.glob(input_path, recursive=True)
 
     # convert to absolute paths
     abs_paths = list(map(lambda path: os.path.abspath(path), paths))
@@ -112,7 +112,7 @@ def main():
                 if ret == 0:
                     state = "launched"
                     status["launched"] = datetime.datetime.now().isoformat()
-                    with open(status_path,"w") as f:
+                    with open(status_path, "w") as f:
                         f.write(json.dumps(status))
                     print(f"Launched {folder}")
                     launched += 1
@@ -124,7 +124,7 @@ def main():
                 not_launched += 1
 
         if completed_stages is not None:
-            state += " (completed: "+",".join(completed_stages)+")"
+            state += " (completed: " + ",".join(completed_stages) + ")"
 
         print(f"\t{folder} {state}")
 
@@ -140,4 +140,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-

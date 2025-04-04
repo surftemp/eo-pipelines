@@ -1,6 +1,6 @@
 # MIT License
 #
-# Copyright (c) 2022 National Center for Earth Observation (NCEO)
+# Copyright (c) 2022-2025 National Center for Earth Observation (NCEO)
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -24,20 +24,20 @@ import os.path
 
 from eo_pipelines.pipeline_stage import PipelineStage
 
-class Regrid(PipelineStage):
 
+class Regrid(PipelineStage):
     VERSION = "0.0.1"
 
     def __init__(self, node_services):
         super().__init__(node_services, "regrid")
         self.node_services = node_services
 
-        self.output_path = self.get_configuration().get("output_path",None)
+        self.output_path = self.get_configuration().get("output_path", None)
         if self.output_path is None:
             self.output_path = self.get_working_directory()
         else:
             if not os.path.isabs(self.output_path):
-                self.output_path = os.path.join(self.get_working_directory(),self.output_path)
+                self.output_path = os.path.join(self.get_working_directory(), self.output_path)
 
         self.get_logger().info("eo_pipeline_stages.Regrid %s" % Regrid.VERSION)
 
@@ -73,9 +73,9 @@ class Regrid(PipelineStage):
                 dataset_folder = input[dataset]
                 for filename in os.listdir(dataset_folder):
                     if filename.endswith(".nc"):
-                        input_paths.append(os.path.join(dataset_folder,filename))
+                        input_paths.append(os.path.join(dataset_folder, filename))
 
-                dataset_output_folder = os.path.abspath(os.path.join(self.output_path,dataset))
+                dataset_output_folder = os.path.abspath(os.path.join(self.output_path, dataset))
                 os.makedirs(dataset_output_folder, exist_ok=True)
                 output_scenes[dataset] = dataset_output_folder
 
@@ -85,11 +85,12 @@ class Regrid(PipelineStage):
                         custom_env = self.get_parameters()
                         custom_env["INPUT_PATH"] = input_path
                         input_filename = os.path.split(input_path)[-1]
-                        output_path = os.path.join(dataset_output_folder,input_filename)
+                        output_path = os.path.join(dataset_output_folder, input_filename)
                         custom_env["OUTPUT_PATH"] = output_path
                         script = os.path.join(os.path.split(__file__)[0], "..", "scripts", "regrid.sh")
-                        task_id = executor.queue_task(self.get_stage_id(),script, custom_env, self.get_working_directory(),
-                                                  description=os.path.split(input_path)[-1])
+                        task_id = executor.queue_task(self.get_stage_id(), script, custom_env,
+                                                      self.get_working_directory(),
+                                                      description=os.path.split(input_path)[-1])
                         task_ids.append(task_id)
 
                     executor.wait_for_tasks()
@@ -109,6 +110,4 @@ class Regrid(PipelineStage):
 
         self.get_logger().info(f"Regrid scenes: succeeded:{total_succeeded}, failed:{total_failed}")
 
-        return {"output":output_scenes}
-
-
+        return {"output": output_scenes}

@@ -25,6 +25,7 @@ import xarray as xr
 import logging
 import os.path
 
+
 class MissingFilter:
 
     def __init__(self, input_folder, output_folder, band, max_missing_fraction):
@@ -42,7 +43,7 @@ class MissingFilter:
         if len(filenames) == 0:
             self.logger.warning("No files found to append")
 
-        os.makedirs(self.output_folder,exist_ok=True)
+        os.makedirs(self.output_folder, exist_ok=True)
 
         included_count = 0
         for filename in filenames:
@@ -55,13 +56,13 @@ class MissingFilter:
                     continue
 
                 da = ds[self.band]
-                missing_fraction = 1 - float(da.count())/da.size
+                missing_fraction = 1 - float(da.count()) / da.size
                 if missing_fraction > self.max_missing_fraction:
-                    continue # filter this file out
+                    continue  # filter this file out
 
-                shutil.copyfile(input_path,output_path)
+                shutil.copyfile(input_path, output_path)
                 included_count += 1
-        included_pct = int(100*included_count/len(filenames))
+        included_pct = int(100 * included_count / len(filenames))
 
         self.logger.info(f"Included {included_count} scenes ({included_pct} %)")
 
@@ -83,12 +84,14 @@ def main():
         "--band", metavar="BAND", help="limit processed scenes by count", default=None)
 
     parser.add_argument(
-        "--max-missing-fraction", metavar="FRACTION", help="filter out scenes with more than this fraction of missing values", default=None, type=float)
+        "--max-missing-fraction", metavar="FRACTION",
+        help="filter out scenes with more than this fraction of missing values", default=None, type=float)
 
     args = parser.parse_args()
 
     processor = MissingFilter(args.input_folder, args.output_folder, args.band, args.max_missing_fraction)
     processor.run()
+
 
 if __name__ == '__main__':
     main()

@@ -31,6 +31,7 @@ from .datetime_utils import date_parse, date_format
 # many seconds
 TIME_WINDOW_SECONDS = 3600
 
+
 class Group:
 
     def __init__(self, start_dt, end_dt, dataset, scene_path):
@@ -105,8 +106,8 @@ class GroupProcessor:
     def process_groups(self):
         group_index = 0
 
-        rename = self.input_spec.get("rename",{})
-        overlap_using = self.input_spec.get("overlap_using",{})
+        rename = self.input_spec.get("rename", {})
+        overlap_using = self.input_spec.get("overlap_using", {})
 
         for group in self.groups:
 
@@ -156,7 +157,7 @@ class GroupProcessor:
                         ds = xr.open_dataset(path)
 
                         if dataset in rename:
-                            rename_vars = {k:v for (k,v) in rename[dataset].items() if k in ds.variables}
+                            rename_vars = {k: v for (k, v) in rename[dataset].items() if k in ds.variables}
                             if rename_vars:
                                 ds = ds.rename_vars(rename_vars)
 
@@ -179,7 +180,8 @@ class GroupProcessor:
                                     combined_ds.attrs[attr_name] = ds.attrs[attr_name]
                                 else:
                                     if ds.attrs[attr_name] != combined_ds.attrs[attr_name]:
-                                        combined_ds.attrs[attr_name] = str(combined_ds.attrs[attr_name]) + ", " + str(ds.attrs[attr_name])
+                                        combined_ds.attrs[attr_name] = str(combined_ds.attrs[attr_name]) + ", " + str(
+                                            ds.attrs[attr_name])
 
                             # merge in variables
 
@@ -193,7 +195,7 @@ class GroupProcessor:
                                     overlap_band = overlap_using[dataset]
                                     if overlap_band in combined_ds:
                                         overlap_mask = np.logical_and(np.isnan(combined_ds[overlap_band].values),
-                                                                    ~np.isnan(ds[overlap_band].values))
+                                                                      ~np.isnan(ds[overlap_band].values))
 
                             for v in ds.data_vars:
                                 if v not in combined_ds:
@@ -226,15 +228,17 @@ class GroupProcessor:
 
                 combined_output_path = os.path.join(self.output_folder, combined_filename)
                 combined_ds.attrs["processing_level"] = ",".join(processing_levels)
-                combined_ds.attrs["acquisition_time"] = date_format(group.start_dt + (group.end_dt - group.start_dt) / 2)
+                combined_ds.attrs["acquisition_time"] = date_format(
+                    group.start_dt + (group.end_dt - group.start_dt) / 2)
 
                 combined_ds.to_netcdf(combined_output_path)
                 combined_ds.close()
 
                 self.logger.info("Processed group (%d/%d): Written combined data to %s" % (
-                group_index, len(self.groups), combined_output_path))
+                    group_index, len(self.groups), combined_output_path))
             except Exception:
                 self.logger.exception("failed to process group")
+
 
 # this program performs actions controlled by a grouping spec
 #

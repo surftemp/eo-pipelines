@@ -1,6 +1,6 @@
 # MIT License
 #
-# Copyright (c) 2022 National Center for Earth Observation (NCEO)
+# Copyright (c) 2022-2025 National Center for Earth Observation (NCEO)
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -33,7 +33,6 @@ from ..utils.process_runner import ProcessRunner
 
 
 class TimeLocker(threading.Thread):
-
     time_lock = threading.Lock()
 
     def __init__(self, interval_s=5):
@@ -50,7 +49,7 @@ class TimeLocker(threading.Thread):
 class ExecutorThread(threading.Thread):
 
     def __init__(self, executor, shell, conda_path, echo_stdout, temp_path, timeout, stagger_time):
-        threading.Thread.__init__(self,daemon=True)
+        threading.Thread.__init__(self, daemon=True)
         self.executor = executor
         self.shell = shell
         self.conda_path = conda_path
@@ -67,35 +66,36 @@ class ExecutorThread(threading.Thread):
             env_vars = copy.deepcopy(env)
             env_vars["CONDA_PATH"] = self.conda_path
             env_vars["TMPDIR"] = self.temp_path
-            log_folder = os.path.join(working_dir,"task-logs")
+            log_folder = os.path.join(working_dir, "task-logs")
             os.makedirs(log_folder, exist_ok=True)
-            log_path = os.path.join(log_folder, task_id+".log")
-            with open(log_path,"a") as f:
+            log_path = os.path.join(log_folder, task_id + ".log")
+            with open(log_path, "a") as f:
                 f.write("\n\n------------------------------------\n\n")
                 cmd_s = " ".join(cmd)
                 f.write(f"Running command: {cmd_s}\n")
                 f.write(f"Working Directory: {working_dir}\n")
                 f.write("Environment:\n")
-                for (key,value) in env_vars.items():
+                for (key, value) in env_vars.items():
                     f.write(f"\t{key}={value}\n")
                 f.write("Script:\n")
                 with open(script) as rf:
                     script_contents = rf.read()
                     for (key, value) in env_vars.items():
-                        script_contents = script_contents.replace("$"+key,value)
+                        script_contents = script_contents.replace("$" + key, value)
                     f.write(script_contents)
                 f.write("\n\n------------------------------------\n\n")
 
             pr = ProcessRunner(cmd, env_vars, stage_id, echo_stdout=self.echo_stdout, log_path=log_path,
                                working_dir=working_dir, timeout=self.timeout)
             if self.stagger_time > 0:
-                tl = TimeLocker(self.stagger_time) # ensure that we don't start processes at exactly the same time
+                tl = TimeLocker(self.stagger_time)  # ensure that we don't start processes at exactly the same time
             start_time = time.time()
             (ret, timed_out) = pr.run()
             end_time = time.time()
             if self.stagger_time > 0:
                 tl.join()
             self.executor.set_task_result(task_id, ret, timed_out, end_time - start_time)
+
 
 class LocalExecutor(Executor):
 
@@ -105,10 +105,10 @@ class LocalExecutor(Executor):
         self.conda_path = environment.get("conda_path", "~/miniforge3/bin/conda")
         self.temp_path = environment.get("temp_path", "/tmp")
         if self.temp_path != "/tmp":
-            os.makedirs(self.temp_path,exist_ok=True)
-        self.nr_threads = stage_configuration.get("nr_threads",1)
+            os.makedirs(self.temp_path, exist_ok=True)
+        self.nr_threads = stage_configuration.get("nr_threads", 1)
         self.timeout = stage_configuration.get("timeout", -1)
-        self.echo_stdout = stage_configuration.get("echo_stdout",False)
+        self.echo_stdout = stage_configuration.get("echo_stdout", False)
         self.stagger_time = stage_configuration.get("stagger_time", 0)
         self.retry_count = stage_configuration.get("retry_count", 0)
         self.pending_queue = queue.Queue()
@@ -136,17 +136,17 @@ class LocalExecutor(Executor):
     def get_task(self):
         return self.pending_queue.get()
 
-    def task_started(self,task_id):
+    def task_started(self, task_id):
         pass
 
     def queue_task(self, stage_id, script, env, working_dir, description="", try_nr=0, task_id=None):
         self.lock.acquire()
         try:
             if task_id is None:
-                task_id = "task-"+uuid.uuid4().hex
+                task_id = "task-" + uuid.uuid4().hex
                 self.submitted_count += 1
                 self.task_ids.append(task_id)
-            self.pending_queue.put((stage_id,task_id,script,env, working_dir))
+            self.pending_queue.put((stage_id, task_id, script, env, working_dir))
             self.task_descriptions[task_id] = (stage_id, script, env, working_dir, description, try_nr)
             return task_id
         finally:
@@ -166,17 +166,17 @@ class LocalExecutor(Executor):
             if not retrying:
                 self.task_results[task_id] = succeeded
                 self.completed_count += 1
-            pct_complete = int(100*self.completed_count/self.submitted_count)
+            pct_complete = int(100 * self.completed_count / self.submitted_count)
             if succeeded:
                 self.logger.info("[%d%%] task %s (%s) succeeded (%d secs)"
-                                 % (pct_complete,task_id, description, int(elapsed_secs)))
+                                 % (pct_complete, task_id, description, int(elapsed_secs)))
             else:
                 if timed_out:
                     self.logger.warning("[%d%%] task %s (%s) failed (%d secs) - timed out"
                                         % (pct_complete, task_id, description, int(elapsed_secs)))
                 else:
                     self.logger.warning("[%d%%] task %s (%s) failed (%d secs) - check task log"
-                                    % (pct_complete, task_id, description, int(elapsed_secs)))
+                                        % (pct_complete, task_id, description, int(elapsed_secs)))
             if retrying:
                 self.logger.warning("re-queuing failed task %s (retry %d/%d)"
                                     % (task_id, try_nr, self.retry_count))
@@ -199,6 +199,3 @@ class LocalExecutor(Executor):
                     break
             finally:
                 self.lock.release()
-
-
-

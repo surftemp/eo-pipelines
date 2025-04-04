@@ -1,6 +1,6 @@
 # MIT License
 #
-# Copyright (c) 2022 National Center for Earth Observation (NCEO)
+# Copyright (c) 2022-2025 National Center for Earth Observation (NCEO)
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -26,6 +26,7 @@ import os
 import signal
 import time
 
+
 class ProcessMonitor(threading.Thread):
 
     def __init__(self, timeout, runner):
@@ -45,7 +46,7 @@ class ProcessMonitor(threading.Thread):
             try:
                 self.runner.timeout_if_not_complete()
             except Exception as ex:
-                print("ProcessMonitor Exception: "+str(ex))
+                print("ProcessMonitor Exception: " + str(ex))
 
 
 class ProcessRunner:
@@ -68,9 +69,9 @@ class ProcessRunner:
 
     def run(self):
         if self.log_path:
-            self.log_file = open(self.log_path,"a")
+            self.log_file = open(self.log_path, "a")
         if self.timeout > 0:
-            self.monitor = ProcessMonitor(timeout=self.timeout,runner=self)
+            self.monitor = ProcessMonitor(timeout=self.timeout, runner=self)
             self.monitor.start()
 
         self.sub = subprocess.Popen(self.cmd, env=self.env_vars, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
@@ -103,15 +104,13 @@ class ProcessRunner:
             except:
                 pass
 
-    def handle_output(self,output):
+    def handle_output(self, output):
         if output:
             if output.endswith("\n"):
                 output = output[:-1]
             if self.echo_stdout:
-                print("[%s:%s]: %s" % (self.name,str(self.sub.pid), output))
+                print("[%s:%s]: %s" % (self.name, str(self.sub.pid), output))
             if self.log_file:
-                self.log_file.write(output+"\n")
+                self.log_file.write(output + "\n")
             if self.output_handler:
                 self.output_handler(output)
-
-

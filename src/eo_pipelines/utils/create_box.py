@@ -1,6 +1,6 @@
 # MIT License
 #
-# Copyright (c) 2022 National Center for Earth Observation (NCEO)
+# Copyright (c) 2022-2025 National Center for Earth Observation (NCEO)
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -26,6 +26,7 @@ import xarray as xr
 import argparse
 
 m_per_degree = 111000  # approx m per degree of latitude
+
 
 class Box:
 
@@ -55,14 +56,14 @@ class Box:
 
         target_ds = xr.Dataset(attrs=metadata)
         target_ds["lat"] = xr.DataArray(lats2d, dims=("nj", "ni"),
-                                                         attrs={"units": "degrees_north", "standard_name": "latitude"})
+                                        attrs={"units": "degrees_north", "standard_name": "latitude"})
         target_ds["lon"] = xr.DataArray(lons2d, dims=("nj", "ni"),
-                                                         attrs={"units": "degrees_east", "standard_name": "longitude"})
+                                        attrs={"units": "degrees_east", "standard_name": "longitude"})
 
         target_ds.to_netcdf(to_path)
 
-if __name__ == '__main__':
 
+if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
     parser.add_argument("output_path", help="path to write output file")
@@ -73,5 +74,5 @@ if __name__ == '__main__':
     parser.add_argument("--resolution", type=float, help="resolution in metres", required=True)
 
     args = parser.parse_args()
-    box = Box(args.lat_min,args.lon_min, args.lat_max, args.lon_max, args.resolution)
+    box = Box(args.lat_min, args.lon_min, args.lat_max, args.lon_max, args.resolution)
     box.export_netcdf(args.output_path)

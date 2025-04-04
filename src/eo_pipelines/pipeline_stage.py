@@ -1,6 +1,6 @@
 # MIT License
 #
-# Copyright (c) 2022 National Center for Earth Observation (NCEO)
+# Copyright (c) 2022-2025 National Center for Earth Observation (NCEO)
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -28,17 +28,17 @@ import json
 
 from eo_pipelines.executors.executor_factory import ExecutorType, ExecutorFactory
 
-class PipelineStage:
 
+class PipelineStage:
     CONCURRENT_EXECUTION_CHECK_AVG_INTERVAL_S = 60
 
     def __init__(self, node_services, stage_type):
         self.__stage_id = node_services.get_node_id()
         self.__stage_type = stage_type
-        self.__configuration = node_services.get_property("configuration",{})
+        self.__configuration = node_services.get_property("configuration", {})
         self.__spec = node_services.get_configuration().get_spec()
         self.__environment = node_services.get_configuration().get_environment()
-        self.__executor_settings = node_services.get_property("executor_settings",{})
+        self.__executor_settings = node_services.get_property("executor_settings", {})
         self.__executor_factory = None
         if "executor_type" in self.__executor_settings:
             executor_type_name = self.__executor_settings["executor_type"]
@@ -46,7 +46,9 @@ class PipelineStage:
         else:
             self.__default_executor_type = ExecutorType.Local
         self.__working_directory = self.__configuration.get("working_directory",
-                                         os.path.join(self.__environment.get("working_directory",os.getcwd()), self.__stage_id))
+                                                            os.path.join(self.__environment.get("working_directory",
+                                                                                                os.getcwd()),
+                                                                         self.__stage_id))
 
         if not os.path.isabs(self.__working_directory):
             self.__working_directory = os.path.abspath(self.__working_directory)
@@ -55,7 +57,8 @@ class PipelineStage:
 
         self.__logger = logging.getLogger(self.__stage_id)
 
-        self.__logger.info("Created %s stage id=%s, dir=%s"%(self.__stage_type,self.__stage_id,self.__working_directory))
+        self.__logger.info(
+            "Created %s stage id=%s, dir=%s" % (self.__stage_type, self.__stage_id, self.__working_directory))
         self.__executor_factory = ExecutorFactory()
 
     def set_executor_factory(self, executor_factory):
@@ -74,7 +77,7 @@ class PipelineStage:
         if executor_type is None:
             executor_type = self.__default_executor_type
         executor_name = ExecutorType.get_executor_type_name(executor_type)
-        executor_settings = self.__executor_settings.get(executor_name,{})
+        executor_settings = self.__executor_settings.get(executor_name, {})
         return self.__executor_factory.create_executor(executor_type, self.get_environment(), executor_settings)
 
     def get_stage_id(self):
@@ -87,17 +90,17 @@ class PipelineStage:
         return self.__logger
 
     def __repr__(self):
-        return self.__stage_id+"/"+self.__stage_type
+        return self.__stage_id + "/" + self.__stage_type
 
-    async def run(self,inputs):
+    async def run(self, inputs):
         start_time = time.time()
         can_skip = self.__executor_settings.get("can_skip", False)
-        results_path = os.path.join(self.__working_directory,"results.json")
+        results_path = os.path.join(self.__working_directory, "results.json")
         try:
             if not can_skip or not os.path.exists(results_path):
                 self.__logger.info("Executing stage %s " % self.__stage_type)
                 result = self.execute_stage(inputs)
-                with open(results_path,"w") as of:
+                with open(results_path, "w") as of:
                     of.write(json.dumps(result))
                 duration = int(time.time() - start_time)
                 self.__logger.info("Executed %s stage (%d seconds)" % (self.__stage_type, duration))
@@ -118,5 +121,3 @@ class PipelineStage:
 
     def get_parameters(self):
         return {}
-
-

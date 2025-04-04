@@ -1,4 +1,3 @@
-
 import argparse
 import os
 import zipfile
@@ -7,15 +6,16 @@ import logging
 import shapely
 import shapely.geometry as sgeom
 
+
 class WRSSearch:
 
     def __init__(self, max_overlap_fraction):
         self.logger = logging.getLogger("usgs_filter")
         folder = os.path.split(__file__)[0]
-        path = os.path.join(folder,"WRS_descending.csv.zip")
+        path = os.path.join(folder, "WRS_descending.csv.zip")
         self.areas = {}
         self.max_overlap_fraction = max_overlap_fraction
-        with open(path,"rb") as f:
+        with open(path, "rb") as f:
             zf = zipfile.ZipFile(f)
             filename = zf.namelist()[0]
             f = zf.open(filename)
@@ -33,15 +33,15 @@ class WRSSearch:
                     row = int(items[headers["ROW"]])
                     path = int(items[headers["PATH"]])
                     coords = items[headers["COORDS"]].split(":")
-                    coords = list(map(lambda c: (float(c.split(";")[0]),float(c.split(";")[1])),coords))
+                    coords = list(map(lambda c: (float(c.split(";")[0]), float(c.split(";")[1])), coords))
                     poly = sgeom.Polygon(coords)
-                    self.areas[(row,path)] = poly
+                    self.areas[(row, path)] = poly
 
         self.paths = {}
-        for (row,path) in self.areas:
+        for (row, path) in self.areas:
             if path not in self.paths:
                 self.paths[path] = []
-            self.paths[path].append(self.areas[(row,path)])
+            self.paths[path].append(self.areas[(row, path)])
 
         for path in self.paths:
             self.paths[path] = shapely.union_all(self.paths[path])
@@ -49,13 +49,13 @@ class WRSSearch:
     def scene_matches(self, search_poly, min_overlap_fraction=0):
         search_area = search_poly.area
         matches = []
-        for (row,path) in self.areas:
-            test_area = self.areas[(row,path)]
+        for (row, path) in self.areas:
+            test_area = self.areas[(row, path)]
             if (test_area.intersects(search_poly)):
                 intersection = test_area.intersection(search_poly)
                 overlap_fraction = intersection.area / search_area
                 if overlap_fraction >= min_overlap_fraction:
-                    matches.append((row,path))
+                    matches.append((row, path))
         return matches
 
     def path_matches(self, search_poly):
@@ -71,6 +71,7 @@ class WRSSearch:
                     matches.append(path)
         return matches
 
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("csv_path", help="Path to CSV file containing landsat scene identifiers")
@@ -81,8 +82,9 @@ if __name__ == '__main__':
     parser.add_argument("--lon-max", type=float, help="maximum longitude, decimal degrees", required=True)
     args = parser.parse_args()
 
-    search_area = sgeom.Polygon([[args.lon_min,args.lat_min],[args.lon_max,args.lat_min],[args.lon_max,args.lat_max],
-                                 [args.lon_min,args.lat_max],[args.lon_min,args.lat_min]])
+    search_area = sgeom.Polygon(
+        [[args.lon_min, args.lat_min], [args.lon_max, args.lat_min], [args.lon_max, args.lat_max],
+         [args.lon_min, args.lat_max], [args.lon_min, args.lat_min]])
 
     search = WRSSearch(args.min_overlap_fraction)
 
@@ -93,7 +95,7 @@ if __name__ == '__main__':
     row_paths = search.scene_matches(search_area)
 
     # the results are all intersecting scenes which belong to one of the paths
-    row_path_matches = set((row,path) for (row,path) in row_paths if path in path_matches)
+    row_path_matches = set((row, path) for (row, path) in row_paths if path in path_matches)
 
     # now filter the CSV
     filtered_lines = []
@@ -108,14 +110,14 @@ if __name__ == '__main__':
             # LC80220032014163LGN01
             path = int(scene_id[3:6])
             row = int(scene_id[6:9])
-            if (row,path) in row_path_matches:
+            if (row, path) in row_path_matches:
                 filtered_lines.append(line)
 
-    with open(args.csv_path,"w") as of:
+    with open(args.csv_path, "w") as of:
         for line in filtered_lines:
             of.write(line)
 
     if input_count > 0:
-        print(f"Filtered {len(filtered_lines)/input_count}")
+        print(f"Filtered {len(filtered_lines) / input_count}")
     else:
         print("No input scenes were read")

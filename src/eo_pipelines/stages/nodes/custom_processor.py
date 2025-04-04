@@ -1,6 +1,6 @@
 # MIT License
 #
-# Copyright (c) 2022 National Center for Earth Observation (NCEO)
+# Copyright (c) 2022-2025 National Center for Earth Observation (NCEO)
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -24,8 +24,8 @@ import os.path
 
 from eo_pipelines.pipeline_stage import PipelineStage
 
-class CustomProcessor(PipelineStage):
 
+class CustomProcessor(PipelineStage):
     VERSION = "0.0.1"
 
     def __init__(self, node_services):
@@ -50,13 +50,13 @@ class CustomProcessor(PipelineStage):
         failed = 0
 
         if self.output_folder:
-            os.makedirs(self.output_folder,exist_ok=True)
+            os.makedirs(self.output_folder, exist_ok=True)
 
         config_path = os.path.join(self.get_working_directory(), "config.json")
 
         import json
         with open(config_path, "w") as f:
-            f.write(json.dumps(self.get_configuration().get("specification",{})))
+            f.write(json.dumps(self.get_configuration().get("specification", {})))
 
         for input in inputs["input"]:
 
@@ -71,8 +71,9 @@ class CustomProcessor(PipelineStage):
                     "OUTPUT_FOLDER": output_folder
                 }
 
-                task_id = executor.queue_task(self.get_stage_id(), self.script_path, custom_env, self.get_working_directory(),
-                                                  description=dataset)
+                task_id = executor.queue_task(self.get_stage_id(), self.script_path, custom_env,
+                                              self.get_working_directory(),
+                                              description=dataset)
 
                 executor.wait_for_tasks()
 
@@ -95,6 +96,4 @@ class CustomProcessor(PipelineStage):
             else:
                 self.get_logger().warn(summary)
 
-        return {"output":output_scenes}
-
-
+        return {"output": output_scenes}

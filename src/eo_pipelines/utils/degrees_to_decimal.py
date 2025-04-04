@@ -1,6 +1,6 @@
 # MIT License
 #
-# Copyright (c) 2022 National Center for Earth Observation (NCEO)
+# Copyright (c) 2022-2025 National Center for Earth Observation (NCEO)
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -25,7 +25,8 @@ import re
 lat_string_regexp = r"(\d+)\.(\d+)\.(\d+)(N|n|S|s)"
 lon_string_regexp = r"(\d+)\.(\d+)\.(\d+)(W|w|E|e)"
 
-def convert(value,is_lat):
+
+def convert(value, is_lat):
     matches = re.match(
         lat_string_regexp if is_lat else lon_string_regexp,
         value)
@@ -43,6 +44,7 @@ def convert(value,is_lat):
     else:
         return None
 
+
 import argparse
 
 parser = argparse.ArgumentParser()
@@ -51,7 +53,7 @@ parser.add_argument("--lon")
 
 args = parser.parse_args()
 if args.lat:
-    lat=convert(args.lat, is_lat=True)
+    lat = convert(args.lat, is_lat=True)
     print(f"lat={lat}")
 if args.lon:
     lon = convert(args.lon, is_lat=False)

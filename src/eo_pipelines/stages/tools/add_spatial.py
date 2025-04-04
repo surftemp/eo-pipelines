@@ -57,7 +57,6 @@ class AddSpatial:
 
 
 if __name__ == '__main__':
-
     parser = argparse.ArgumentParser()
     parser.add_argument("--input-path", help="path to input netcdf4 file", required=True)
     parser.add_argument("--output-path", help="path to output netcdf4 file", required=True)

@@ -72,7 +72,7 @@ class TimeStacker:
 
                 for attr_name in self.stack_attributes:
                     attr_value = str(first_ds.attrs[attr_name])
-                    first_ds[attr_name] = xr.DataArray(np.array([attr_value]),dims=("time",))
+                    first_ds[attr_name] = xr.DataArray(np.array([attr_value]), dims=("time",))
 
                 attr_names = list(first_ds.attrs)
                 for attr_name in attr_names:
@@ -97,7 +97,8 @@ class TimeStacker:
                 try:
                     data = netCDF4.Dataset(self.output_path, "a")
                 except:
-                    self.logger.exception(f"error opening {self.output_path} for append, retry {i + 1}/{self.retry_count}")
+                    self.logger.exception(
+                        f"error opening {self.output_path} for append, retry {i + 1}/{self.retry_count}")
                     time.sleep(self.retry_append_delay_s)
                     continue
                 break
@@ -127,11 +128,12 @@ class TimeStacker:
 
                             if variable in self.stack_attributes:
                                 attr_value = str(getattr(add_data, variable))
-                                data.variables[variable][tuple(lh_lookup)] = bytes(attr_value,"utf-8")
+                                data.variables[variable][tuple(lh_lookup)] = bytes(attr_value, "utf-8")
                             else:
-                                data.variables[variable][tuple(lh_lookup)] = add_data.variables[variable][tuple(rh_lookup)]
+                                data.variables[variable][tuple(lh_lookup)] = add_data.variables[variable][
+                                    tuple(rh_lookup)]
                     except Exception:
-                        self.logger.exception(f"error adding {filename} retry {i+1}/{self.retry_count}")
+                        self.logger.exception(f"error adding {filename} retry {i + 1}/{self.retry_count}")
                         time.sleep(self.retry_delay_s)
                         continue
                     self.logger.info(f"added {filename}")
@@ -170,7 +172,8 @@ def main():
         default=20)
 
     parser.add_argument(
-        "--stack-attributes", nargs="+", metavar="ATTRIBUTE_NAME", help="each of these attributes will be removed and stacked into a new variable",
+        "--stack-attributes", nargs="+", metavar="ATTRIBUTE_NAME",
+        help="each of these attributes will be removed and stacked into a new variable",
         default=[])
 
     parser.add_argument(
@@ -184,6 +187,7 @@ def main():
                             args.stack_attributes, args.keep_attributes)
 
     processor.run()
+
 
 if __name__ == '__main__':
     main()

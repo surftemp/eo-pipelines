@@ -1,6 +1,6 @@
 # MIT License
 #
-# Copyright (c) 2022 National Center for Earth Observation (NCEO)
+# Copyright (c) 2022-2025 National Center for Earth Observation (NCEO)
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -29,6 +29,7 @@ from eo_pipelines.api.eo_pipeline_runner import EOPipelineRunner
 
 import glob
 
+
 def main():
     logging.basicConfig(level=logging.INFO)
     parser = argparse.ArgumentParser()
@@ -42,7 +43,7 @@ def main():
 
     yaml_paths = []
     for input_path in args.input_paths:
-        yaml_paths += glob.glob(input_path,recursive=True)
+        yaml_paths += glob.glob(input_path, recursive=True)
 
     print(f"matched {len(yaml_paths)} pipelines")
 
@@ -51,7 +52,7 @@ def main():
     ran = 0
     for yaml_path in yaml_paths:
         runner = EOPipelineRunner()
-        folder,yaml_filename = os.path.split(yaml_path)
+        folder, yaml_filename = os.path.split(yaml_path)
         os.chdir(main_folder)
         os.chdir(folder)
 
@@ -69,6 +70,7 @@ def main():
         print(f"completed pipeline: {yaml_path} in folder {folder} with result {result_status}")
         if args.limit and ran >= args.limit:
             break
+
 
 if __name__ == '__main__':
     main()

@@ -1,6 +1,6 @@
 # MIT License
 #
-# Copyright (c) 2022 National Center for Earth Observation (NCEO)
+# Copyright (c) 2022-2025 National Center for Earth Observation (NCEO)
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -23,9 +23,10 @@
 def format_date(dt):
     return dt.strftime("%Y-%m-%d")
 
+
 def format_float(f):
     return str(f)
 
+
 def format_int(i):
     return str(i)
-

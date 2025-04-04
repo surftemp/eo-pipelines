@@ -1,6 +1,6 @@
 # MIT License
 #
-# Copyright (c) 2022 National Center for Earth Observation (NCEO)
+# Copyright (c) 2022-2025 National Center for Earth Observation (NCEO)
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -31,7 +31,6 @@ from eo_pipelines.executors.executor_factory import ExecutorType
 
 
 class USGS_Search(PipelineStage):
-
     VERSION = "0.0.2"
 
     # by default run 4 download sub-processes, making sure they don't start
@@ -50,15 +49,15 @@ class USGS_Search(PipelineStage):
         self.get_logger().info("eo_pipeline_stages.Search %s" % USGS_Search.VERSION)
 
     def get_parameters(self):
-        row_filter = self.get_configuration().get("row","")
+        row_filter = self.get_configuration().get("row", "")
         if row_filter:
-            row_filter = "--row "+str(row_filter)
-        path_filter = self.get_configuration().get("path","")
+            row_filter = "--row " + str(row_filter)
+        path_filter = self.get_configuration().get("path", "")
         if path_filter:
-            path_filter = "--path "+str(path_filter)
+            path_filter = "--path " + str(path_filter)
         month_filter = self.get_configuration().get("months", [])
         if len(month_filter) > 0:
-            month_filter = "--months " + " ".join(map(lambda m:str(m),month_filter))
+            month_filter = "--months " + " ".join(map(lambda m: str(m), month_filter))
         else:
             month_filter = ""
 
@@ -95,7 +94,7 @@ class USGS_Search(PipelineStage):
             "MIN_OVERLAP_FRACTION": format_float(min_overlap_fraction)
         }
 
-    def execute_stage(self,inputs):
+    def execute_stage(self, inputs):
 
         usgs_username = os.getenv("USGS_USERNAME")
         usgs_token = os.getenv("USGS_TOKEN")
@@ -107,7 +106,7 @@ class USGS_Search(PipelineStage):
 
         # compare parameters with last run, if exists
         last_parameters = None
-        parameters_path = os.path.join(self.get_working_directory(),"parameters.json")
+        parameters_path = os.path.join(self.get_working_directory(), "parameters.json")
         if os.path.exists(parameters_path):
             with open(parameters_path) as f:
                 last_parameters = json.loads(f.read())
@@ -135,21 +134,22 @@ class USGS_Search(PipelineStage):
                 executor = self.create_executor(ExecutorType.Local)
 
                 # for each dataset
-                scenes_csv_path = os.path.join(self.get_working_directory(),"%s_scenes.csv"%(dataset))
+                scenes_csv_path = os.path.join(self.get_working_directory(), "%s_scenes.csv" % (dataset))
 
                 custom_env = {
-                        "USGS_USERNAME": usgs_username,
-                        "USGS_TOKEN": usgs_token,
-                        "USGS_DATADIR": self.output_path,
-                        "SCENES_CSV_PATH": scenes_csv_path,
-                        "DATASET": dataset
+                    "USGS_USERNAME": usgs_username,
+                    "USGS_TOKEN": usgs_token,
+                    "USGS_DATADIR": self.output_path,
+                    "SCENES_CSV_PATH": scenes_csv_path,
+                    "DATASET": dataset
                 }
 
                 for key in parameters:
                     custom_env[key] = parameters[key]
 
                 list_script = os.path.join(os.path.split(__file__)[0], "..", "scripts", "usgs_search.sh")
-                list_task_id = executor.queue_task(self.get_stage_id(),list_script,custom_env,self.get_working_directory())
+                list_task_id = executor.queue_task(self.get_stage_id(), list_script, custom_env,
+                                                   self.get_working_directory())
                 executor.wait_for_tasks()
                 if not executor.get_task_result(list_task_id):
                     self.get_logger().error(
@@ -162,7 +162,7 @@ class USGS_Search(PipelineStage):
                     filter_env["SCENES_CSV_PATH"] = scenes_csv_path
                     filter_script = os.path.join(os.path.split(__file__)[0], "..", "scripts", "usgs_filter.sh")
                     filter_task_id = executor.queue_task(self.get_stage_id(), filter_script, filter_env,
-                                                       self.get_working_directory())
+                                                         self.get_working_directory())
                     executor.wait_for_tasks()
                     if not executor.get_task_result(filter_task_id):
                         self.get_logger().error(
@@ -196,7 +196,8 @@ class USGS_Search(PipelineStage):
                 year = int(scene_id[9:13])
                 doy = int(scene_id[13:16])
                 return (year, doy)
-            year_day = {} # lookup (year,doy) => set(dataset_name)
+
+            year_day = {}  # lookup (year,doy) => set(dataset_name)
             # build the lookup
             for dataset in datasets:
                 for scene_id in scene_list[dataset]:
@@ -216,8 +217,7 @@ class USGS_Search(PipelineStage):
                 scene_list[dataset] = filtered_scenes
 
         if errors == 0:
-            with open(parameters_path,"w") as f:
+            with open(parameters_path, "w") as f:
                 f.write(json.dumps(parameters))
 
-        return {"output":scene_list}
-
+        return {"output": scene_list}

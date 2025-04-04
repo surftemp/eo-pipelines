@@ -25,6 +25,7 @@ import copy
 
 import xarray as xr
 
+
 class MetadataTweaker:
 
     def __init__(self, input_path, output_path, config_path):
@@ -37,12 +38,12 @@ class MetadataTweaker:
         self.global_attrs = {}
 
     def resolve(self, attrs, modifiers):
-        for (k,v) in modifiers.items():
+        for (k, v) in modifiers.items():
             if v is None:
                 if k in attrs:
                     del attrs[k]
             else:
-                if isinstance(v,str) and v.startswith("{") and v.endswith("}"):
+                if isinstance(v, str) and v.startswith("{") and v.endswith("}"):
                     # substitute a value from another attribute
                     lookup = v[1:-1].split(".")
                     if len(lookup) == 1:
@@ -51,7 +52,7 @@ class MetadataTweaker:
                         attrs[k] = new_value
                     elif len(lookup) == 2:
                         # from a variable attribute: variable.attr
-                        new_value = self.variable_attrs.get(lookup[0],{}).get(lookup[1],None)
+                        new_value = self.variable_attrs.get(lookup[0], {}).get(lookup[1], None)
                         if new_value is not None:
                             attrs[k] = new_value
                 else:
@@ -66,15 +67,16 @@ class MetadataTweaker:
 
         if "global_attributes" in self.config:
             global_modifiers = self.config["global_attributes"]
-            self.resolve(self.ds.attrs,global_modifiers)
+            self.resolve(self.ds.attrs, global_modifiers)
 
         if "variable_attributes" in self.config:
             variable_modifiers = self.config["variable_attributes"]
             for variable in variable_modifiers:
                 if variable in self.ds.variables:
-                    self.resolve(self.ds[variable].attrs,variable_modifiers[variable])
+                    self.resolve(self.ds[variable].attrs, variable_modifiers[variable])
 
         self.ds.to_netcdf(self.output_path)
+
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)

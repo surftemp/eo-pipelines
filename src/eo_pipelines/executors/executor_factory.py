@@ -1,6 +1,6 @@
 # MIT License
 #
-# Copyright (c) 2022 National Center for Earth Observation (NCEO)
+# Copyright (c) 2022-2025 National Center for Earth Observation (NCEO)
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -21,55 +21,40 @@
 # SOFTWARE.
 
 import enum
-import os.path
 
 from .local_executor import LocalExecutor
-from .slurm_executor import SlurmExecutor, available as slurm_available
 from ..pipeline_exceptions import PipelineExecutorException
 
 
-
 class ExecutorType(enum.Enum):
-
     Local = 0
-    Slurm = 1
 
-    valid_executor_type_names = ["local","slurm"]
+    valid_executor_type_names = ["local"]
 
     @staticmethod
     def parse_executor_type_name(name):
         if name == "local":
             return ExecutorType.Local
-        elif name == "slurm":
-            return ExecutorType.Slurm
         else:
             raise PipelineExecutorException("Invalid executor type, should be one of: "
-                             + ",".join(ExecutorType.valid_executor_type_names))
+                                            + ",".join(ExecutorType.valid_executor_type_names))
 
     @staticmethod
     def get_executor_type_name(value):
         if value == ExecutorType.Local:
             return "local"
-        elif value == ExecutorType.Slurm:
-            return "slurm"
         else:
             return None
+
 
 class ExecutorFactory:
 
     def __init__(self):
         pass
 
-    def create_executor(self,executor_type,environment,executor_settings):
-
-
+    def create_executor(self, executor_type, environment, executor_settings):
 
         if executor_type == ExecutorType.Local:
             return LocalExecutor(environment, executor_settings)
-        elif executor_type == ExecutorType.Slurm:
-            if not slurm_available:
-                raise PipelineExecutorException("SLURM executor not available - check pyjob is installed")
-            return SlurmExecutor(environment, executor_settings)
         else:
             raise PipelineExecutorException("Unknown executor_type")
-

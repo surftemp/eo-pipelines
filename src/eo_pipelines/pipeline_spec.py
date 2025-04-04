@@ -1,6 +1,6 @@
 # MIT License
 #
-# Copyright (c) 2022 National Center for Earth Observation (NCEO)
+# Copyright (c) 2022-2025 National Center for Earth Observation (NCEO)
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -24,18 +24,18 @@ import re
 import datetime
 from .pipeline_exceptions import PipelineSetupException
 
-class PipelineSpec:
 
+class PipelineSpec:
     lat_string_regexp = r"(\d+)\.(\d+)\.(\d+)(N|n|S|s)"
     lon_string_regexp = r"(\d+)\.(\d+)\.(\d+)(W|w|E|e)"
 
     @staticmethod
-    def convert_lat_or_lon(value,is_lat):
-        if isinstance(value,int):
+    def convert_lat_or_lon(value, is_lat):
+        if isinstance(value, int):
             return float(value)
-        if isinstance(value,float):
+        if isinstance(value, float):
             return value
-        if isinstance(value,str):
+        if isinstance(value, str):
             matches = re.match(
                 PipelineSpec.lat_string_regexp if is_lat else PipelineSpec.lon_string_regexp,
                 value)
@@ -44,7 +44,7 @@ class PipelineSpec:
                 minutes = matches.group(2)
                 seconds = matches.group(3)
                 nsew = matches.group(4)
-                value = float(degrees)+float(minutes)/60+float(seconds)/3600
+                value = float(degrees) + float(minutes) / 60 + float(seconds) / 3600
                 if is_lat and (nsew == "S" or nsew == "s"):
                     value = -value
                 if not is_lat and (nsew == "W" or nsew == "w"):
@@ -53,30 +53,29 @@ class PipelineSpec:
         unit = "latitude" if is_lat else "longitude"
         raise Exception(f"Unable to read {value} as a {unit}")
 
-
     def __init__(self, spec):
         try:
-            self.lat_min = PipelineSpec.convert_lat_or_lon(spec["lat_min"],is_lat=True)
-            self.lat_max = PipelineSpec.convert_lat_or_lon(spec["lat_max"],is_lat=True)
-            self.lon_min = PipelineSpec.convert_lat_or_lon(spec["lon_min"],is_lat=False)
-            self.lon_max = PipelineSpec.convert_lat_or_lon(spec["lon_max"],is_lat=False)
+            self.lat_min = PipelineSpec.convert_lat_or_lon(spec["lat_min"], is_lat=True)
+            self.lat_max = PipelineSpec.convert_lat_or_lon(spec["lat_max"], is_lat=True)
+            self.lon_min = PipelineSpec.convert_lat_or_lon(spec["lon_min"], is_lat=False)
+            self.lon_max = PipelineSpec.convert_lat_or_lon(spec["lon_max"], is_lat=False)
 
-            self.max_cloud_cover_fraction = float(spec.get("max_cloud_cover_fraction",1))
+            self.max_cloud_cover_fraction = float(spec.get("max_cloud_cover_fraction", 1))
 
             # already converted to datetime.date if present
-            self.start_date = spec.get("start_date",None)
+            self.start_date = spec.get("start_date", None)
             if self.start_date is not None:
-                self.start_date = datetime.datetime.strptime(self.start_date,"%Y-%m-%d").date()
-            self.end_date = spec.get("end_date",None)
+                self.start_date = datetime.datetime.strptime(self.start_date, "%Y-%m-%d").date()
+            self.end_date = spec.get("end_date", None)
             if self.end_date is not None:
-                self.end_date = datetime.datetime.strptime(self.end_date,"%Y-%m-%d").date()
+                self.end_date = datetime.datetime.strptime(self.end_date, "%Y-%m-%d").date()
 
             self.bands_for_dataset = {}
             self.datasets = []
             if "datasets" in spec:
-               self.datasets = list(spec["datasets"].keys())
-               for (dataset, dataset_details) in spec["datasets"].items():
-                   self.bands_for_dataset[dataset] = list(map(lambda b: str(b), dataset_details["bands"]))
+                self.datasets = list(spec["datasets"].keys())
+                for (dataset, dataset_details) in spec["datasets"].items():
+                    self.bands_for_dataset[dataset] = list(map(lambda b: str(b), dataset_details["bands"]))
 
         except Exception as ex:
             raise PipelineSetupException(str(ex))
@@ -108,12 +107,12 @@ class PipelineSpec:
     def get_all_bands(self):
         all_bands = set()
         for dataset in self.datasets:
-            for band in self.bands_for_dataset.get(dataset,[]):
+            for band in self.bands_for_dataset.get(dataset, []):
                 all_bands.add(band)
         return sorted(list(all_bands))
 
-    def get_bands_for_dataset(self,dataset):
-        return self.bands_for_dataset.get(dataset,[])
+    def get_bands_for_dataset(self, dataset):
+        return self.bands_for_dataset.get(dataset, [])
 
     def __repr__(self):
         s = "Spec\n"
@@ -122,5 +121,6 @@ class PipelineSpec:
         s += f"\tDate: {self.start_date} - {self.end_date}\n"
         return s
 
+
 if __name__ == '__main__':
-    print(PipelineSpec.convert_lat_or_lon("12.30.0E",is_lat=False))
+    print(PipelineSpec.convert_lat_or_lon("12.30.0E", is_lat=False))

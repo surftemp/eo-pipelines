@@ -1,6 +1,6 @@
 # MIT License
 #
-# Copyright (c) 2022 National Center for Earth Observation (NCEO)
+# Copyright (c) 2022-2025 National Center for Earth Observation (NCEO)
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -23,7 +23,7 @@
 class PipelineUtils:
 
     @staticmethod
-    def sub_env_vars(script,env):
+    def sub_env_vars(script, env):
         for (name, value) in env.items():
-            script = script.replace("$"+name,value)
+            script = script.replace("$" + name, value)
         return script

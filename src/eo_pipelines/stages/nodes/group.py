@@ -1,6 +1,6 @@
 # MIT License
 #
-# Copyright (c) 2022 National Center for Earth Observation (NCEO)
+# Copyright (c) 2022-2025 National Center for Earth Observation (NCEO)
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -28,7 +28,6 @@ from eo_pipelines.executors.executor_factory import ExecutorType
 
 
 class Group(PipelineStage):
-
     VERSION = "0.1"
 
     def __init__(self, node_services):
@@ -46,28 +45,27 @@ class Group(PipelineStage):
         dataset_bands = {dataset: self.get_spec().get_bands_for_dataset(dataset) for dataset in all_datasets}
         rename = self.get_configuration().get("rename", {})
         overlap_using = self.get_configuration().get("overlap_using", {})
-        return { "DATASET_BANDS": dataset_bands, "OUTPUT_PATH": self.output_path, "RENAME": rename,
-                 "OVERLAP_USING": overlap_using }
+        return {"DATASET_BANDS": dataset_bands, "OUTPUT_PATH": self.output_path, "RENAME": rename,
+                "OVERLAP_USING": overlap_using}
 
     def execute_stage(self, inputs):
 
         parameters = self.get_parameters()
         output_paths = {}
         for input_scenes in inputs["input"]:
-
             group_name = "___".join(sorted(input_scenes.keys()))
             group_path = os.path.abspath(os.path.join(self.output_path, group_name))
             output_paths[group_name] = group_path
             executor = self.create_executor(ExecutorType.Local)
 
-            grouping_spec_file_path = os.path.join(self.get_working_directory(),"grouping_spec.json")
+            grouping_spec_file_path = os.path.join(self.get_working_directory(), "grouping_spec.json")
             grouping_spec = {
                 "datasets": input_scenes,
                 "bands": parameters["DATASET_BANDS"],
                 "rename": parameters["RENAME"],
                 "overlap_using": parameters["OVERLAP_USING"]
             }
-            with open(grouping_spec_file_path,"w") as f:
+            with open(grouping_spec_file_path, "w") as f:
                 f.write(json.dumps(grouping_spec))
 
             custom_env = {
@@ -75,9 +73,7 @@ class Group(PipelineStage):
                 "OUTPUT_PATH": group_path
             }
             script = os.path.join(os.path.split(__file__)[0], "..", "scripts", "group.sh")
-            executor.queue_task(self.get_stage_id(),script,custom_env,self.get_working_directory())
+            executor.queue_task(self.get_stage_id(), script, custom_env, self.get_working_directory())
             executor.wait_for_tasks()
 
-        return {"output":output_paths}
-
-
+        return {"output": output_paths}

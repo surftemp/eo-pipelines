@@ -1,6 +1,6 @@
-
 from eo_pipelines.pipeline_spec import PipelineSpec
 import uuid
+
 
 class Configuration:
 
