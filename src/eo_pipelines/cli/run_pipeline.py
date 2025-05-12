@@ -28,7 +28,7 @@ from eo_pipelines.api.eo_pipeline_runner import EOPipelineRunner
 
 
 def main():
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(level=logging.INFO,format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     parser = argparse.ArgumentParser()
     parser.add_argument("yaml_path")
     parser.add_argument("--with-configuration", nargs=2, action="append",

@@ -31,7 +31,7 @@ import glob
 
 
 def main():
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     parser = argparse.ArgumentParser()
     parser.add_argument("input_paths", nargs="+", help="paths to pipeline files, may contain wildcards")
     parser.add_argument("--limit", type=int, default=None)

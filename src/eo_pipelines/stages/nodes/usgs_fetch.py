@@ -110,7 +110,7 @@ suffix_map = {
 }
 
 # for supported datasets, map from channel name to a unique file suffix
-excldue_suffix_map = {
+exclude_suffix_map = {
 
     "LANDSAT_OT_C2_L1": {
     },
@@ -223,7 +223,7 @@ class Fetch(PipelineStage):
 
                         # for each suffix, add _GM_+suffix to exclude L7 gap mask files
                         exclude_suffixes = []
-                        exclude_suffix_mapping = excldue_suffix_map.get(dataset, {})
+                        exclude_suffix_mapping = exclude_suffix_map.get(dataset, {})
                         for band_name in exclude_suffix_mapping:
                             if len(required_bands) == 0 or band_name in required_bands:
                                 exclude_suffixes.append(exclude_suffix_mapping[band_name])
@@ -242,7 +242,7 @@ class Fetch(PipelineStage):
                             "USGS_DATADIR": self.output_path,
                             "SCENES_CSV_PATH": scenes_csv_path,
                             "SUFFIXES": " ".join(suffixes),
-                            "EXCLUDE_SUFFIXES": " -x " + " ".join(exclude_suffixes) if len(exclude_suffixes) else "",
+                            "EXCLUDE_SUFFIXES": " -x " + " ".join(exclude_suffixes) if len(exclude_suffixes)>0 else "",
                             "OUTPUT_FOLDER": dataset_output_folder,
                             "DOWNLOAD_FOLDER": dataset_download_folder,
                             "FILE_CACHE_INDEX": file_cache_index,

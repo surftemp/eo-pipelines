@@ -67,7 +67,7 @@ class LandsatImport(PipelineStage):
             for (key, value) in inject_metadata.items():
                 inject_metadata_cmd += f" {key}=\"{value}\""
 
-        error_fraction_threshold = self.get_configuration().get("error_fraction_threshold", 0.01)
+        error_fraction_threshold = self.get_configuration().get("error_fraction_threshold", 0.03)
 
         total_succeeded = 0
         total_failed = 0
