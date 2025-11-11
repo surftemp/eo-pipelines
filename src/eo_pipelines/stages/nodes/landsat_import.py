@@ -68,6 +68,8 @@ class LandsatImport(PipelineStage):
                 inject_metadata_cmd += f" {key}=\"{value}\""
 
         error_fraction_threshold = self.get_configuration().get("error_fraction_threshold", 0.03)
+        export_optical_as = self.get_configuration().get("export_optical_as","")
+        export_int16 = self.get_configuration().get("export_int16",{})
 
         total_succeeded = 0
         total_failed = 0
@@ -78,6 +80,17 @@ class LandsatImport(PipelineStage):
                 succeeded = 0
                 failed = 0
 
+                bands = self.get_spec().get_bands_for_dataset(dataset)
+                export_cmds = []
+                if export_optical_as:
+                    export_cmds.append(f"--export-optical-as {export_optical_as}")
+                for band in bands:
+                    if band in export_int16:
+                        scale = export_int16[band].get("scale",1)
+                        offset = export_int16[band].get("offset",0)
+                        export_cmds.append(f"--export-int16 {band} {scale} {offset}")
+
+                export_cmd = " ".join(export_cmds)
                 metadata_paths = []
                 dataset_folder = input[dataset]
                 for filename in os.listdir(dataset_folder):
@@ -92,10 +105,11 @@ class LandsatImport(PipelineStage):
                     for metadata_path in metadata_paths:
                         metadata_id = os.path.splitext(os.path.split(metadata_path)[1])[0]
                         custom_env = self.get_parameters()
-                        custom_env["BANDS"] = " ".join(self.get_spec().get_bands_for_dataset(dataset))
+                        custom_env["BANDS"] = " ".join(bands)
                         custom_env["SCENE_PATH"] = metadata_path
                         custom_env["OUTPUT_PATH"] = dataset_output_folder
                         custom_env["INJECT_METADATA"] = inject_metadata_cmd
+                        custom_env["EXPORT_CMD"] = export_cmd
 
                         script = os.path.join(os.path.split(__file__)[0], "..", "scripts", "landsat_import.sh")
                         task_id = executor.queue_task(self.get_stage_id(), script, custom_env,

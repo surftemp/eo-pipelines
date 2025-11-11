@@ -26,6 +26,7 @@ import json
 from eo_pipelines.pipeline_stage import PipelineStage
 from eo_pipelines.executors.executor_factory import ExecutorType
 
+DEFAULT_TIME_WINDOW_SECONDS = 300
 
 class Group(PipelineStage):
     VERSION = "0.1"
@@ -45,8 +46,16 @@ class Group(PipelineStage):
         dataset_bands = {dataset: self.get_spec().get_bands_for_dataset(dataset) for dataset in all_datasets}
         rename = self.get_configuration().get("rename", {})
         overlap_using = self.get_configuration().get("overlap_using", {})
-        return {"DATASET_BANDS": dataset_bands, "OUTPUT_PATH": self.output_path, "RENAME": rename,
-                "OVERLAP_USING": overlap_using}
+        group_by_attributes = self.get_configuration().get("group_by_attributes", [])
+        time_window_seconds = self.get_configuration().get("time_window_seconds", DEFAULT_TIME_WINDOW_SECONDS)
+        return {
+            "DATASET_BANDS": dataset_bands,
+            "OUTPUT_PATH": self.output_path,
+            "RENAME": rename,
+            "OVERLAP_USING": overlap_using,
+            "GROUP_BY_ATTRIBUTES": group_by_attributes,
+            "TIME_WINDOW_SECONDS": time_window_seconds
+        }
 
     def execute_stage(self, inputs):
 
@@ -63,6 +72,8 @@ class Group(PipelineStage):
                 "datasets": input_scenes,
                 "bands": parameters["DATASET_BANDS"],
                 "rename": parameters["RENAME"],
+                "group_by_attributes": parameters["GROUP_BY_ATTRIBUTES"],
+                "time_window_seconds": parameters["TIME_WINDOW_SECONDS"],
                 "overlap_using": parameters["OVERLAP_USING"]
             }
             with open(grouping_spec_file_path, "w") as f:

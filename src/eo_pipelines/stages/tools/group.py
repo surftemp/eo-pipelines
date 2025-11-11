@@ -27,30 +27,28 @@ import numpy as np
 
 from .datetime_utils import date_parse, date_format
 
-# important - allow grouping of scenes spanning a time range of no more than this
-# many seconds
-TIME_WINDOW_SECONDS = 3600
-
-
 class Group:
 
-    def __init__(self, start_dt, end_dt, dataset, scene_path):
+    def __init__(self, start_dt, end_dt, dataset, scene_path, group_attrs):
         self.start_dt = start_dt
         self.end_dt = end_dt
         self.scenes_by_dataset = {}
         self.scenes_by_dataset[dataset] = [scene_path]
+        self.group_attrs = group_attrs
 
     def get_scenes_for_dataset(self, dataset):
         return sorted(self.scenes_by_dataset.get(dataset, []))
 
-    def extend(self, dt, dataset, scene_path):
+    def extend(self, dt, dataset, scene_path, group_attrs, time_window_seconds):
+        if group_attrs != self.group_attrs:
+            return False
         include = False
         if dt >= self.start_dt and dt <= self.end_dt:
             include = True
-        elif dt < self.start_dt and (self.end_dt - dt).total_seconds() <= TIME_WINDOW_SECONDS:
+        elif dt < self.start_dt and (self.end_dt - dt).total_seconds() <= time_window_seconds:
             include = True
             self.start_dt = dt
-        elif dt > self.end_dt and (dt - self.start_dt).total_seconds() <= TIME_WINDOW_SECONDS:
+        elif dt > self.end_dt and (dt - self.start_dt).total_seconds() <= time_window_seconds:
             include = True
             self.end_dt = dt
         if include:
@@ -68,8 +66,8 @@ class Group:
         s += ")"
         return s
 
-
 class GroupProcessor:
+
     DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%S%z"
 
     def __init__(self, input_spec, output_folder):
@@ -81,9 +79,11 @@ class GroupProcessor:
         self.groups = []
 
         self.logger = logging.getLogger("GroupProcessor")
+        self.time_window_seconds = self.input_spec["time_window_seconds"]
 
     def find_groups(self):
         datasets = self.input_spec["datasets"]
+        group_by_attributes = self.input_spec["group_by_attributes"]
         for (dataset, folder) in datasets.items():
             for filename in os.listdir(folder):
                 path = os.path.join(folder, filename)
@@ -92,13 +92,15 @@ class GroupProcessor:
                     continue
                 with xr.open_dataset(path) as ds:
                     dt = date_parse(ds.attrs["acquisition_time"])
+                    group_attrs = [ds.attrs[attr] for attr in group_by_attributes]
+
                 added = False
                 for group in self.groups:
-                    if group.extend(dt, dataset, path):
+                    if group.extend(dt, dataset, path, group_attrs, self.time_window_seconds):
                         added = True
                         break
                 if not added:
-                    self.groups.append(Group(dt, dt, dataset, path))
+                    self.groups.append(Group(dt, dt, dataset, path, group_attrs))
                     self.logger.info(f"Creating group: {len(self.groups)}")
 
         self.logger.info("Found %d groups:" % len(self.groups))
@@ -210,21 +212,6 @@ class GroupProcessor:
                                         a = np.where(overlap_mask, ds[v].values, a)
                                     combined_ds[v].data = a
                             ds.close()
-
-                # check if we had variable name clash while processing, the output variables
-                # contributed by each dataset should have no intersection
-
-                all_output_variables = set()
-                clashing_output_variables = set()
-
-                for (dataset, output_variables) in output_variables_by_dataset.items():
-                    clashing_output_variables.update(all_output_variables.intersection(output_variables))
-                    all_output_variables.update(output_variables)
-
-                # if len(clashing_output_variables) > 0:
-                #    self.logger.error("Failed to process group (%d/%d): multiple datasets supply variables named %s" % (
-                #        group_index, len(self.groups), str(clashing_output_variables)))
-                #    continue
 
                 combined_output_path = os.path.join(self.output_folder, combined_filename)
                 combined_ds.attrs["processing_level"] = ",".join(processing_levels)
