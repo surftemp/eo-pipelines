@@ -24,7 +24,6 @@ import os
 import json
 
 from eo_pipelines.pipeline_stage import PipelineStage
-from eo_pipelines.executors.executor_factory import ExecutorType
 
 DEFAULT_TIME_WINDOW_SECONDS = 300
 
@@ -33,6 +32,9 @@ class Group(PipelineStage):
 
     def __init__(self, node_services):
         super().__init__(node_services, "group")
+
+    async def load(self):
+        await super().load()
         self.output_path = self.get_configuration().get("output_path", None)
         if self.output_path is None:
             self.output_path = self.get_working_directory()
@@ -61,30 +63,31 @@ class Group(PipelineStage):
 
         parameters = self.get_parameters()
         output_paths = {}
-        for input_scenes in inputs["input"]:
-            group_name = "___".join(sorted(input_scenes.keys()))
-            group_path = os.path.abspath(os.path.join(self.output_path, group_name))
-            output_paths[group_name] = group_path
-            executor = self.create_executor(ExecutorType.Local)
+        input_scenes = inputs.get("input", {})
 
-            grouping_spec_file_path = os.path.join(self.get_working_directory(), "grouping_spec.json")
-            grouping_spec = {
-                "datasets": input_scenes,
-                "bands": parameters["DATASET_BANDS"],
-                "rename": parameters["RENAME"],
-                "group_by_attributes": parameters["GROUP_BY_ATTRIBUTES"],
-                "time_window_seconds": parameters["TIME_WINDOW_SECONDS"],
-                "overlap_using": parameters["OVERLAP_USING"]
-            }
-            with open(grouping_spec_file_path, "w") as f:
-                f.write(json.dumps(grouping_spec))
+        group_name = "___".join(sorted(input_scenes.keys()))
+        group_path = os.path.abspath(os.path.join(self.output_path, group_name))
+        output_paths[group_name] = group_path
+        executor = self.create_executor()
 
-            custom_env = {
-                "GROUPING_SPEC_PATH": grouping_spec_file_path,
-                "OUTPUT_PATH": group_path
-            }
-            script = os.path.join(os.path.split(__file__)[0], "..", "scripts", "group.sh")
-            executor.queue_task(self.get_stage_id(), script, custom_env, self.get_working_directory())
-            executor.wait_for_tasks()
+        grouping_spec_file_path = os.path.join(self.get_working_directory(), "grouping_spec.json")
+        grouping_spec = {
+            "datasets": input_scenes,
+            "bands": parameters["DATASET_BANDS"],
+            "rename": parameters["RENAME"],
+            "group_by_attributes": parameters["GROUP_BY_ATTRIBUTES"],
+            "time_window_seconds": parameters["TIME_WINDOW_SECONDS"],
+            "overlap_using": parameters["OVERLAP_USING"]
+        }
+        with open(grouping_spec_file_path, "w") as f:
+            f.write(json.dumps(grouping_spec))
+
+        custom_env = {
+            "GROUPING_SPEC_PATH": grouping_spec_file_path,
+            "OUTPUT_PATH": group_path
+        }
+        script = os.path.join(os.path.split(__file__)[0], "..", "scripts", "group.sh")
+        executor.queue_task(self.get_stage_id(), script, custom_env, self.get_working_directory())
+        executor.wait_for_tasks()
 
         return {"output": output_paths}

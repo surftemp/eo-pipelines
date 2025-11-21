@@ -33,6 +33,8 @@ class GenerateHtml(PipelineStage):
         super().__init__(node_services, "generate_html")
         self.node_services = node_services
 
+    async def load(self):
+        await super().load()
         self.output_folder = self.get_configuration().get("output_folder", "html_output")
 
         if not os.path.isabs(self.output_folder):
@@ -76,48 +78,48 @@ class GenerateHtml(PipelineStage):
 
         options = self.build_options()
 
-        for input in inputs["input"]:
+        input = inputs.get("input",{})
 
-            for dataset in input:
+        for dataset in input:
 
-                input_folder = input[dataset]
+            input_folder = input[dataset]
 
-                input_paths = []
-                for fname in os.listdir(input_folder):
-                    if fname.endswith(".nc"):
-                        input_paths.append(os.path.join(input_folder, fname))
+            input_paths = []
+            for fname in os.listdir(input_folder):
+                if fname.endswith(".nc"):
+                    input_paths.append(os.path.join(input_folder, fname))
 
-                for input_path in input_paths:
+            for input_path in input_paths:
 
-                    filename_root = os.path.splitext(os.path.split(input_path)[1])[0]
+                filename_root = os.path.splitext(os.path.split(input_path)[1])[0]
 
-                    output_path = os.path.join(self.output_folder, filename_root)
-                    os.makedirs(output_path, exist_ok=True)
+                output_path = os.path.join(self.output_folder, filename_root)
+                os.makedirs(output_path, exist_ok=True)
 
-                    script = os.path.join(os.path.split(__file__)[0], "..", "scripts", "generate_html.sh")
+                script = os.path.join(os.path.split(__file__)[0], "..", "scripts", "generate_html.sh")
 
-                    custom_env = {
-                        "INPUT_PATH": input_path,
-                        "OUTPUT_PATH": output_path,
-                        "LAYER_CONFIG_PATH": layer_config_path,
-                        "OPTIONS": options
-                    }
+                custom_env = {
+                    "INPUT_PATH": input_path,
+                    "OUTPUT_PATH": output_path,
+                    "LAYER_CONFIG_PATH": layer_config_path,
+                    "OPTIONS": options
+                }
 
-                    custom_env.update(self.get_parameters())
+                custom_env.update(self.get_parameters())
 
-                    if "TITLE" not in custom_env:
-                        custom_env["TITLE"] = filename_root
+                if "TITLE" not in custom_env:
+                    custom_env["TITLE"] = filename_root
 
-                    task_id = executor.queue_task(self.get_stage_id(), script, custom_env, self.get_working_directory(),
-                                                  description=dataset)
+                task_id = executor.queue_task(self.get_stage_id(), script, custom_env, self.get_working_directory(),
+                                              description=dataset)
 
-                    executor.wait_for_tasks()
-                    if executor.get_task_result(task_id):
-                        succeeded += 1
-                        if self.output_folder:
-                            output_scenes[dataset] = output_path
-                    else:
-                        failed += 1
+                executor.wait_for_tasks()
+                if executor.get_task_result(task_id):
+                    succeeded += 1
+                    if self.output_folder:
+                        output_scenes[dataset] = output_path
+                else:
+                    failed += 1
 
         summary = f"generate_html: succeeded:{succeeded}, failed:{failed}"
         if succeeded > 0:

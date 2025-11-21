@@ -32,6 +32,9 @@ class MetadataTweaker(PipelineStage):
         super().__init__(node_services, "meta_tweaker")
         self.node_services = node_services
 
+    async def load(self):
+        await super().load()
+
         self.output_folder = self.get_configuration().get("output_folder", "altered_scenes")
 
         if not os.path.isabs(self.output_folder):
@@ -57,40 +60,40 @@ class MetadataTweaker(PipelineStage):
         with open(config_path, "w") as f:
             f.write(json.dumps(self.get_configuration().get("specification", {})))
 
-        for input in inputs["input"]:
+        input = inputs.get("input",{})
 
-            for dataset in input:
+        for dataset in input:
 
-                output_folder = os.path.join(self.output_folder, dataset)
-                os.makedirs(output_folder, exist_ok=True)
-                input_folder = input[dataset]
+            output_folder = os.path.join(self.output_folder, dataset)
+            os.makedirs(output_folder, exist_ok=True)
+            input_folder = input[dataset]
 
-                task_ids = []
-                for fname in os.listdir(input_folder):
-                    if fname.endswith(".nc"):
-                        custom_env = self.get_parameters()
-                        custom_env["INPUT_PATH"] = os.path.join(input_folder, fname)
-                        output_path = os.path.join(self.output_folder, dataset, fname)
-                        custom_env["OUTPUT_PATH"] = output_path
-                        custom_env["CONFIG_PATH"] = config_path
+            task_ids = []
+            for fname in os.listdir(input_folder):
+                if fname.endswith(".nc"):
+                    custom_env = self.get_parameters()
+                    custom_env["INPUT_PATH"] = os.path.join(input_folder, fname)
+                    output_path = os.path.join(self.output_folder, dataset, fname)
+                    custom_env["OUTPUT_PATH"] = output_path
+                    custom_env["CONFIG_PATH"] = config_path
 
-                        script = os.path.join(os.path.split(__file__)[0], "..", "scripts", "metadata_tweaker.sh")
+                    script = os.path.join(os.path.split(__file__)[0], "..", "scripts", "metadata_tweaker.sh")
 
-                        task_id = executor.queue_task(self.get_stage_id(), script, custom_env,
-                                                      self.get_working_directory(),
-                                                      description=dataset)
+                    task_id = executor.queue_task(self.get_stage_id(), script, custom_env,
+                                                  self.get_working_directory(),
+                                                  description=dataset)
 
-                        task_ids.append(task_id)
+                    task_ids.append(task_id)
 
-                executor.wait_for_tasks()
+            executor.wait_for_tasks()
 
-                for task_id in task_ids:
-                    if executor.get_task_result(task_id):
-                        succeeded += 1
-                    else:
-                        failed += 1
+            for task_id in task_ids:
+                if executor.get_task_result(task_id):
+                    succeeded += 1
+                else:
+                    failed += 1
 
-                output_scenes[dataset] = output_folder
+            output_scenes[dataset] = output_folder
 
         summary = f"meta_tweaker: succeeded:{succeeded}, failed:{failed}"
         if succeeded > 0:

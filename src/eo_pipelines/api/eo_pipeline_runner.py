@@ -26,6 +26,7 @@ import os
 import tempfile
 import json
 
+from hyrrokkin.engine_launchers.python_engine_launcher import PythonEngineLauncher
 from hyrrokkin.api.topology import Topology
 from hyrrokkin.utils.yaml_importer import import_from_yaml
 
@@ -33,6 +34,7 @@ schema_path = "eo_pipelines.stages"
 
 
 class EOPipelineRunner:
+
     STATUS_FILENAME = "eo-pipeline-status.json"
 
     def __init__(self):
@@ -77,15 +79,17 @@ class EOPipelineRunner:
     def run(self, yaml_path, only_stages=None):
         with tempfile.TemporaryDirectory() as tmpdirname:
 
-            t = Topology(tmpdirname, [schema_path],
-                         execution_handler=lambda timestamp, node_id, state, exception, is_manual: self.track_execution(
+            t = Topology(tmpdirname, [schema_path])
+
+            runner = t.open_runner(
+                         engine_launcher=PythonEngineLauncher(verbose=True, in_process=True, persistence="shared_filesystem"),
+                         execution_event_handler=lambda timestamp, node_id, state, exception, is_manual: self.track_execution(
                              timestamp, node_id, state, exception))
 
             for (property_name, property_value) in self.configuration:
                 t.set_package_property("eo_pipelines", property_name, property_value)
 
-            with open(yaml_path) as f:
-                import_from_yaml(t, f)
+            import_from_yaml(t, yaml_path)
 
             stage_ids = t.get_node_ids()
             if only_stages:
@@ -98,7 +102,7 @@ class EOPipelineRunner:
             self.status["stage_ids"] = stage_ids
             self.save_status()
 
-            ok = t.run()
+            ok = runner.run()
 
             if ok:
                 self.status["succeeded"] = datetime.datetime.now().isoformat()

@@ -26,91 +26,89 @@ import os.path
 import time
 import json
 
-from eo_pipelines.executors.executor_factory import ExecutorType, ExecutorFactory
+from eo_pipelines.executors.local_executor import LocalExecutor
 
 
 class PipelineStage:
     CONCURRENT_EXECUTION_CHECK_AVG_INTERVAL_S = 60
 
     def __init__(self, node_services, stage_type):
-        self.__stage_id = node_services.get_node_id()
-        self.__stage_type = stage_type
-        self.__configuration = node_services.get_property("configuration", {})
-        self.__spec = node_services.get_configuration().get_spec()
-        self.__environment = node_services.get_configuration().get_environment()
-        self.__executor_settings = node_services.get_property("executor_settings", {})
-        self.__executor_factory = None
-        if "executor_type" in self.__executor_settings:
-            executor_type_name = self.__executor_settings["executor_type"]
-            self.__default_executor_type = ExecutorType.parse_executor_type_name(executor_type_name)
-        else:
-            self.__default_executor_type = ExecutorType.Local
-        self.__working_directory = self.__configuration.get("working_directory",
-                                                            os.path.join(self.__environment.get("working_directory",
+        self.node_services = node_services
+        self.stage_id = node_services.get_node_id()
+        self.stage_type = stage_type
+        self.configuration = None
+        self.spec = None
+        self.environment = None
+        self.executor_settings = None
+        self.executor_factory = None
+        self.working_directory = None
+        self.logger = logging.getLogger(self.stage_id)
+
+    async def load(self):
+        properties = await self.node_services.get_properties()
+        self.configuration = properties.get("configuration", {})
+        self.spec = self.node_services.get_configuration().get_spec()
+        self.environment = self.node_services.get_configuration().get_environment()
+        self.executor_settings = properties.get("executor_settings", {})
+
+        print(properties,self.configuration)
+        self.working_directory = self.configuration.get("working_directory",
+                                                            os.path.join(self.environment.get("working_directory",
                                                                                                 os.getcwd()),
-                                                                         self.__stage_id))
+                                                                         self.stage_id))
 
-        if not os.path.isabs(self.__working_directory):
-            self.__working_directory = os.path.abspath(self.__working_directory)
+        if not os.path.isabs(self.working_directory):
+            self.working_directory = os.path.abspath(self.working_directory)
 
-        os.makedirs(self.__working_directory, exist_ok=True)
+        os.makedirs(self.working_directory, exist_ok=True)
 
-        self.__logger = logging.getLogger(self.__stage_id)
+        self.logger.info(
+            "Created %s stage id=%s, dir=%s" % (self.stage_type, self.stage_id, self.working_directory))
 
-        self.__logger.info(
-            "Created %s stage id=%s, dir=%s" % (self.__stage_type, self.__stage_id, self.__working_directory))
-        self.__executor_factory = ExecutorFactory()
-
-    def set_executor_factory(self, executor_factory):
-        self.__executor_factory = executor_factory
 
     def get_configuration(self):
-        return self.__configuration
+        return self.configuration
 
     def get_spec(self):
-        return self.__spec
+        return self.spec
 
     def get_environment(self):
-        return self.__environment
+        return self.environment
 
-    def create_executor(self, executor_type=None):
-        if executor_type is None:
-            executor_type = self.__default_executor_type
-        executor_name = ExecutorType.get_executor_type_name(executor_type)
-        executor_settings = self.__executor_settings.get(executor_name, {})
-        return self.__executor_factory.create_executor(executor_type, self.get_environment(), executor_settings)
+    def create_executor(self):
+        return LocalExecutor(self.get_environment(), self.executor_settings)
 
     def get_stage_id(self):
-        return self.__stage_id
+        return self.stage_id
 
     def get_working_directory(self):
-        return self.__working_directory
+        return self.working_directory
 
     def get_logger(self):
-        return self.__logger
+        return self.logger
 
     def __repr__(self):
-        return self.__stage_id + "/" + self.__stage_type
+        return self.stage_id + "/" + self.stage_type
 
     async def run(self, inputs):
         start_time = time.time()
-        can_skip = self.__executor_settings.get("can_skip", False)
-        results_path = os.path.join(self.__working_directory, "results.json")
+        can_skip = self.executor_settings.get("can_skip", False)
+        results_path = os.path.join(self.working_directory, "results.json")
         try:
             if not can_skip or not os.path.exists(results_path):
-                self.__logger.info("Executing stage %s " % self.__stage_type)
+                self.logger.info("Executing stage %s " % self.stage_type)
                 result = self.execute_stage(inputs)
                 with open(results_path, "w") as of:
                     of.write(json.dumps(result))
                 duration = int(time.time() - start_time)
-                self.__logger.info("Executed %s stage (%d seconds)" % (self.__stage_type, duration))
+                self.logger.info("Executed %s stage (%d seconds)" % (self.stage_type, duration))
             else:
-                self.__logger.info("Skipping stage %s execution (reusing previous results)" % self.__stage_type)
+                self.logger.info("Skipping stage %s execution (reusing previous results)" % self.stage_type)
                 with open(results_path) as f:
                     result = json.loads(f.read())
         except Exception as ex:
             duration = int(time.time() - start_time)
-            self.__logger.info("Failed stage %s with %s (%d seconds)" % (self.__stage_type, str(ex), duration))
+            self.logger.info("Failed stage %s with %s (%d seconds)" % (self.stage_type, str(ex), duration))
             raise
 
         return result

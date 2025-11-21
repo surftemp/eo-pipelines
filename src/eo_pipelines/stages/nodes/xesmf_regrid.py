@@ -33,6 +33,9 @@ class XESMFRegrid(PipelineStage):
         super().__init__(node_services, "xesmf_regrid")
         self.node_services = node_services
 
+    async def load(self):
+        await super().load()
+
         self.output_path = self.get_configuration().get("output_path", None)
         if self.output_path is None:
             self.output_path = self.get_working_directory()
@@ -70,47 +73,47 @@ class XESMFRegrid(PipelineStage):
         total_succeeded = 0
         total_failed = 0
 
-        for input in inputs["input"]:
+        input = inputs.get("input",{})
 
-            for dataset in input:
-                succeeded = 0
-                failed = 0
-                input_paths = []
-                dataset_folder = input[dataset]
-                for filename in os.listdir(dataset_folder):
-                    if filename.endswith(".nc"):
-                        input_paths.append(os.path.join(dataset_folder, filename))
+        for dataset in input:
+            succeeded = 0
+            failed = 0
+            input_paths = []
+            dataset_folder = input[dataset]
+            for filename in os.listdir(dataset_folder):
+                if filename.endswith(".nc"):
+                    input_paths.append(os.path.join(dataset_folder, filename))
 
-                dataset_output_folder = os.path.abspath(os.path.join(self.output_path, dataset))
-                os.makedirs(dataset_output_folder, exist_ok=True)
-                output_scenes[dataset] = dataset_output_folder
+            dataset_output_folder = os.path.abspath(os.path.join(self.output_path, dataset))
+            os.makedirs(dataset_output_folder, exist_ok=True)
+            output_scenes[dataset] = dataset_output_folder
 
-                task_ids = []
-                if input_paths:
-                    for input_path in input_paths:
-                        custom_env = self.get_parameters()
-                        custom_env["INPUT_PATH"] = input_path
-                        custom_env["OUTPUT_FOLDER"] = dataset_output_folder
-                        script = os.path.join(os.path.split(__file__)[0], "..", "scripts", "xesmf_regrid.sh")
-                        task_id = executor.queue_task(self.get_stage_id(), script, custom_env,
-                                                      self.get_working_directory(),
-                                                      description=os.path.split(input_path)[-1])
-                        task_ids.append(task_id)
+            task_ids = []
+            if input_paths:
+                for input_path in input_paths:
+                    custom_env = self.get_parameters()
+                    custom_env["INPUT_PATH"] = input_path
+                    custom_env["OUTPUT_FOLDER"] = dataset_output_folder
+                    script = os.path.join(os.path.split(__file__)[0], "..", "scripts", "xesmf_regrid.sh")
+                    task_id = executor.queue_task(self.get_stage_id(), script, custom_env,
+                                                  self.get_working_directory(),
+                                                  description=os.path.split(input_path)[-1])
+                    task_ids.append(task_id)
 
-                    executor.wait_for_tasks()
-                    for task_id in task_ids:
-                        if executor.get_task_result(task_id):
-                            succeeded += 1
-                        else:
-                            failed += 1
+                executor.wait_for_tasks()
+                for task_id in task_ids:
+                    if executor.get_task_result(task_id):
+                        succeeded += 1
+                    else:
+                        failed += 1
 
-                    error_fraction = failed / (succeeded + failed)
-                    if error_fraction > error_fraction_threshold:
-                        raise Exception(
-                            f"Failed to regrid dataset {dataset}: error fraction {error_fraction} > threshold {error_fraction_threshold}")
+                error_fraction = failed / (succeeded + failed)
+                if error_fraction > error_fraction_threshold:
+                    raise Exception(
+                        f"Failed to regrid dataset {dataset}: error fraction {error_fraction} > threshold {error_fraction_threshold}")
 
-                    total_succeeded += succeeded
-                    total_failed += failed
+                total_succeeded += succeeded
+                total_failed += failed
 
         self.get_logger().info(f"Regrid scenes: succeeded:{total_succeeded}, failed:{total_failed}")
 

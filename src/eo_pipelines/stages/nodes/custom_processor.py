@@ -32,6 +32,8 @@ class CustomProcessor(PipelineStage):
         super().__init__(node_services, "custom_processor")
         self.node_services = node_services
 
+    async def load(self):
+        await super().load()
         self.output_folder = self.get_configuration().get("output_path", "altered_scenes")
         self.script_path = self.get_configuration().get("script_path", "")
 
@@ -58,31 +60,31 @@ class CustomProcessor(PipelineStage):
         with open(config_path, "w") as f:
             f.write(json.dumps(self.get_configuration().get("specification", {})))
 
-        for input in inputs["input"]:
+        input = inputs.get("input",{})
 
-            for dataset in input:
+        for dataset in input:
 
-                output_folder = os.path.join(self.output_folder, dataset)
-                os.makedirs(output_folder, exist_ok=True)
-                input_folder = input[dataset]
+            output_folder = os.path.join(self.output_folder, dataset)
+            os.makedirs(output_folder, exist_ok=True)
+            input_folder = input[dataset]
 
-                custom_env = {
-                    "INPUT_FOLDER": input_folder,
-                    "OUTPUT_FOLDER": output_folder
-                }
+            custom_env = {
+                "INPUT_FOLDER": input_folder,
+                "OUTPUT_FOLDER": output_folder
+            }
 
-                task_id = executor.queue_task(self.get_stage_id(), self.script_path, custom_env,
-                                              self.get_working_directory(),
-                                              description=dataset)
+            task_id = executor.queue_task(self.get_stage_id(), self.script_path, custom_env,
+                                          self.get_working_directory(),
+                                          description=dataset)
 
-                executor.wait_for_tasks()
+            executor.wait_for_tasks()
 
-                if executor.get_task_result(task_id):
-                    succeeded += 1
-                else:
-                    failed += 1
+            if executor.get_task_result(task_id):
+                succeeded += 1
+            else:
+                failed += 1
 
-                output_scenes[dataset] = output_folder
+            output_scenes[dataset] = output_folder
 
         summary = f"custom_processor: succeeded:{succeeded}, failed:{failed}"
         if succeeded > 0:

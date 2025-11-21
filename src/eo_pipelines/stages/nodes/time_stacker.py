@@ -32,6 +32,9 @@ class TimeStacker(PipelineStage):
         super().__init__(node_services, "time_stacker")
         self.node_services = node_services
 
+    async def load(self):
+        await super().load()
+
         self.output_folder = self.get_configuration().get("output_folder", "stacked_output")
 
         if not os.path.isabs(self.output_folder):
@@ -61,37 +64,37 @@ class TimeStacker(PipelineStage):
 
         os.makedirs(self.output_folder, exist_ok=True)
 
-        for input in inputs["input"]:
+        input = inputs.get("input",{})
 
-            for dataset in input:
+        for dataset in input:
 
-                custom_env = self.get_parameters()
-                input_path = input[dataset]
-                custom_env["INPUT_FOLDER"] = input_path
+            custom_env = self.get_parameters()
+            input_path = input[dataset]
+            custom_env["INPUT_FOLDER"] = input_path
 
-                dataset_output_folder = os.path.join(self.output_folder, dataset)
-                os.makedirs(dataset_output_folder, exist_ok=True)
-                output_path = os.path.join(dataset_output_folder, output_filename)
+            dataset_output_folder = os.path.join(self.output_folder, dataset)
+            os.makedirs(dataset_output_folder, exist_ok=True)
+            output_path = os.path.join(dataset_output_folder, output_filename)
 
-                custom_env["OUTPUT_PATH"] = output_path
+            custom_env["OUTPUT_PATH"] = output_path
 
-                count = 0
-                for fname in os.listdir(input_path):
-                    if fname.endswith(".nc"):
-                        count += 1
+            count = 0
+            for fname in os.listdir(input_path):
+                if fname.endswith(".nc"):
+                    count += 1
 
-                if count:
+            if count:
 
-                    script = os.path.join(os.path.split(__file__)[0], "..", "scripts", "time_stacker.sh")
-                    task_id = executor.queue_task(self.get_stage_id(), script, custom_env, self.get_working_directory(),
-                                                  description=os.path.split(input_path)[-1])
+                script = os.path.join(os.path.split(__file__)[0], "..", "scripts", "time_stacker.sh")
+                task_id = executor.queue_task(self.get_stage_id(), script, custom_env, self.get_working_directory(),
+                                              description=os.path.split(input_path)[-1])
 
-                    executor.wait_for_tasks()
-                    if executor.get_task_result(task_id):
-                        succeeded += 1
-                        if self.output_folder:
-                            output_scenes[dataset] = dataset_output_folder
-                    else:
-                        failed += 1
+                executor.wait_for_tasks()
+                if executor.get_task_result(task_id):
+                    succeeded += 1
+                    if self.output_folder:
+                        output_scenes[dataset] = dataset_output_folder
+                else:
+                    failed += 1
 
         return {"output": output_scenes}

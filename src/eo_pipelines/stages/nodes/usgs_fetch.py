@@ -26,7 +26,6 @@ import json
 
 from eo_pipelines.pipeline_stage import PipelineStage
 from eo_pipelines.pipeline_stage_utils import format_int, format_date, format_float
-from eo_pipelines.executors.executor_factory import ExecutorType
 
 # for supported datasets, map from channel name to a unique file suffix
 suffix_map = {
@@ -135,7 +134,7 @@ exclude_suffix_map = {
 }
 
 
-class Fetch(PipelineStage):
+class USGS_Fetch(PipelineStage):
     VERSION = "0.0.2"
     fetch_stage_count = 0
 
@@ -150,6 +149,9 @@ class Fetch(PipelineStage):
 
     def __init__(self, node_services):
         super().__init__(node_services, "fetch")
+
+    async def load(self):
+        await super().load()
         self.output_path = self.get_configuration().get("output_path", None)
         if self.output_path is None:
             self.output_path = self.get_working_directory()
@@ -164,7 +166,7 @@ class Fetch(PipelineStage):
             if not os.path.isabs(self.download_path):
                 self.download_path = os.path.join(self.get_working_directory(), self.download_path)
 
-        self.get_logger().info("eo_pipeline_stages.Fetch %s" % Fetch.VERSION)
+        self.get_logger().info("eo_pipeline_stages.Fetch %s" % USGS_Fetch.VERSION)
 
     def execute_stage(self, inputs):
 
@@ -186,7 +188,7 @@ class Fetch(PipelineStage):
 
         output_folders = {}
 
-        executor = self.create_executor(ExecutorType.Local)
+        executor = self.create_executor()
 
         parameters = self.get_parameters()
 
@@ -201,79 +203,81 @@ class Fetch(PipelineStage):
             if last_parameters:
                 os.unlink(parameters_path)
 
-            for input in inputs["input"]:
-                for dataset in input:
-                    entity_ids = input[dataset]
-                    if len(entity_ids) > 0:
-                        scenes_csv_path = os.path.join(self.get_working_directory(), "%s_scenes.csv" % (dataset))
-                        with open(scenes_csv_path, "w") as f:
-                            f.write(dataset + "\n")
-                            for entity_id in entity_ids:
-                                f.write(entity_id + "\n")
+            input = inputs.get("input",{})
 
-                        required_bands = self.get_spec().get_bands_for_dataset(dataset)
+            for dataset in input:
+                print(input)
+                entity_ids = input[dataset]
+                if len(entity_ids) > 0:
+                    scenes_csv_path = os.path.join(self.get_working_directory(), "%s_scenes.csv" % (dataset))
+                    with open(scenes_csv_path, "w") as f:
+                        f.write(dataset + "\n")
+                        for entity_id in entity_ids:
+                            f.write(entity_id + "\n")
 
-                        suffix_mapping = suffix_map.get(dataset, {})
+                    required_bands = self.get_spec().get_bands_for_dataset(dataset)
 
-                        suffixes = [".XML"]
+                    suffix_mapping = suffix_map.get(dataset, {})
 
-                        for band_name in suffix_mapping:
-                            if len(required_bands) == 0 or band_name in required_bands:
-                                suffixes.append(suffix_mapping[band_name])
+                    suffixes = [".XML"]
 
-                        # for each suffix, add _GM_+suffix to exclude L7 gap mask files
-                        exclude_suffixes = []
-                        exclude_suffix_mapping = exclude_suffix_map.get(dataset, {})
-                        for band_name in exclude_suffix_mapping:
-                            if len(required_bands) == 0 or band_name in required_bands:
-                                exclude_suffixes.append(exclude_suffix_mapping[band_name])
+                    for band_name in suffix_mapping:
+                        if len(required_bands) == 0 or band_name in required_bands:
+                            suffixes.append(suffix_mapping[band_name])
 
-                        dataset_output_folder = os.path.join(self.output_path, dataset)
-                        os.makedirs(dataset_output_folder, exist_ok=True)
+                    # for each suffix, add _GM_+suffix to exclude L7 gap mask files
+                    exclude_suffixes = []
+                    exclude_suffix_mapping = exclude_suffix_map.get(dataset, {})
+                    for band_name in exclude_suffix_mapping:
+                        if len(required_bands) == 0 or band_name in required_bands:
+                            exclude_suffixes.append(exclude_suffix_mapping[band_name])
 
-                        dataset_download_folder = os.path.join(self.download_path, dataset)
-                        os.makedirs(dataset_download_folder, exist_ok=True)
+                    dataset_output_folder = os.path.join(self.output_path, dataset)
+                    os.makedirs(dataset_output_folder, exist_ok=True)
 
-                        download_summary_path = os.path.join(self.output_path, dataset + ".csv")
+                    dataset_download_folder = os.path.join(self.download_path, dataset)
+                    os.makedirs(dataset_download_folder, exist_ok=True)
 
-                        custom_env = {
-                            "USGS_USERNAME": usgs_username,
-                            "USGS_TOKEN": usgs_token,
-                            "USGS_DATADIR": self.output_path,
-                            "SCENES_CSV_PATH": scenes_csv_path,
-                            "SUFFIXES": " ".join(suffixes),
-                            "EXCLUDE_SUFFIXES": " -x " + " ".join(exclude_suffixes) if len(exclude_suffixes)>0 else "",
-                            "OUTPUT_FOLDER": dataset_output_folder,
-                            "DOWNLOAD_FOLDER": dataset_download_folder,
-                            "FILE_CACHE_INDEX": file_cache_index,
-                            "NO_DOWNLOAD": "--no-download" if no_download else "",
-                            "DOWNLOAD_SUMMARY_PATH": download_summary_path,
-                            "LIMIT": f"--limit {limit}" if limit else ""
-                        }
+                    download_summary_path = os.path.join(self.output_path, dataset + ".csv")
 
-                        fetch_script = os.path.join(os.path.split(__file__)[0], "..", "scripts", "usgs_fetch.sh")
-                        fetch_task_id = executor.queue_task(self.get_stage_id(), fetch_script, custom_env,
-                                                            self.get_working_directory())
-                        executor.wait_for_tasks()
-                        if not executor.get_task_result(fetch_task_id):
-                            self.get_logger().error("Failed to fetch of scenes for dataset: %s" % dataset)
+                    custom_env = {
+                        "USGS_USERNAME": usgs_username,
+                        "USGS_TOKEN": usgs_token,
+                        "USGS_DATADIR": self.output_path,
+                        "SCENES_CSV_PATH": scenes_csv_path,
+                        "SUFFIXES": " ".join(suffixes),
+                        "EXCLUDE_SUFFIXES": " -x " + " ".join(exclude_suffixes) if len(exclude_suffixes)>0 else "",
+                        "OUTPUT_FOLDER": dataset_output_folder,
+                        "DOWNLOAD_FOLDER": dataset_download_folder,
+                        "FILE_CACHE_INDEX": file_cache_index,
+                        "NO_DOWNLOAD": "--no-download" if no_download else "",
+                        "DOWNLOAD_SUMMARY_PATH": download_summary_path,
+                        "LIMIT": f"--limit {limit}" if limit else ""
+                    }
 
-                        with open(download_summary_path) as f:
-                            rdr = csv.reader(f)
-                            entity_ids = set()
-                            failed_entity_ids = set()
-                            for line in rdr:
-                                [entity_id, filename] = line
-                                entity_ids.add(entity_id)
-                                if not os.path.isfile(os.path.join(dataset_output_folder, filename)):
-                                    failed_entity_ids.add(entity_id)
+                    fetch_script = os.path.join(os.path.split(__file__)[0], "..", "scripts", "usgs_fetch.sh")
+                    fetch_task_id = executor.queue_task(self.get_stage_id(), fetch_script, custom_env,
+                                                        self.get_working_directory())
+                    executor.wait_for_tasks()
+                    if not executor.get_task_result(fetch_task_id):
+                        self.get_logger().error("Failed to fetch of scenes for dataset: %s" % dataset)
 
-                            if len(entity_ids):
-                                error_fraction = len(failed_entity_ids) / len(entity_ids)
-                                if error_fraction > error_fraction_threshold:
-                                    raise Exception(
-                                        f"Failed to download dataset {dataset}: error fraction {error_fraction} > threshold {error_fraction_threshold}")
+                    with open(download_summary_path) as f:
+                        rdr = csv.reader(f)
+                        entity_ids = set()
+                        failed_entity_ids = set()
+                        for line in rdr:
+                            [entity_id, filename] = line
+                            entity_ids.add(entity_id)
+                            if not os.path.isfile(os.path.join(dataset_output_folder, filename)):
+                                failed_entity_ids.add(entity_id)
 
-                        output_folders[dataset] = dataset_output_folder
+                        if len(entity_ids):
+                            error_fraction = len(failed_entity_ids) / len(entity_ids)
+                            if error_fraction > error_fraction_threshold:
+                                raise Exception(
+                                    f"Failed to download dataset {dataset}: error fraction {error_fraction} > threshold {error_fraction_threshold}")
+
+                    output_folders[dataset] = dataset_output_folder
 
         return {"output": output_folders}

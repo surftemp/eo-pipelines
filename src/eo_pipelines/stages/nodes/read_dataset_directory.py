@@ -34,6 +34,9 @@ class ReadDatasetDirectory(PipelineStage):
     def __init__(self, node_services):
         super().__init__(node_services, "read_dataset_directory")
         self.node_services = node_services
+
+    async def load(self):
+        await super().load()
         self.output_path = self.get_configuration().get("output_path", None)
         if self.output_path is None:
             self.output_path = self.get_working_directory()

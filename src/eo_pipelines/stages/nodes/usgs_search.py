@@ -27,8 +27,6 @@ import datetime
 
 from eo_pipelines.pipeline_stage import PipelineStage
 from eo_pipelines.pipeline_stage_utils import format_int, format_date, format_float
-from eo_pipelines.executors.executor_factory import ExecutorType
-
 
 class USGS_Search(PipelineStage):
     VERSION = "0.0.2"
@@ -45,10 +43,15 @@ class USGS_Search(PipelineStage):
     def __init__(self, node_services):
         super().__init__(node_services, "search")
         self.node_services = node_services
+
+    async def load(self):
+        await super().load()
         self.output_path = self.get_configuration().get("output_path", self.get_working_directory())
         self.get_logger().info("eo_pipeline_stages.Search %s" % USGS_Search.VERSION)
 
     def get_parameters(self):
+        night = self.get_configuration().get("night", False)
+        night_filter = "--night-only" if night else ""
         row_filter = self.get_configuration().get("row", "")
         if row_filter:
             row_filter = "--row " + str(row_filter)
@@ -81,7 +84,8 @@ class USGS_Search(PipelineStage):
             "OUTPUT_PATH": self.output_path,
             "MONTH_FILTER": month_filter,
             "ROW_FILTER": row_filter,
-            "PATH_FILTER": path_filter
+            "PATH_FILTER": path_filter,
+            "NIGHT_FILTER": night_filter
         }
 
     def get_filter_parameters(self):
@@ -131,7 +135,7 @@ class USGS_Search(PipelineStage):
             # for each dataset, get a list of scenes
             for dataset in datasets:
 
-                executor = self.create_executor(ExecutorType.Local)
+                executor = self.create_executor()
 
                 # for each dataset
                 scenes_csv_path = os.path.join(self.get_working_directory(), "%s_scenes.csv" % (dataset))

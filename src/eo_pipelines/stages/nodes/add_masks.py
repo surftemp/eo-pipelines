@@ -33,6 +33,9 @@ class AddMasks(PipelineStage):
         super().__init__(node_services, "add_masks")
         self.node_services = node_services
 
+    async def load(self):
+        await super().load()
+
         self.output_folder = self.get_configuration().get("output_folder", "masked_scenes")
 
         if not os.path.isabs(self.output_folder):
@@ -64,31 +67,31 @@ class AddMasks(PipelineStage):
         if self.output_folder:
             os.makedirs(self.output_folder, exist_ok=True)
 
-        for input in inputs["input"]:
+        input = inputs.get("input",{})
 
-            for dataset in input:
+        for dataset in input:
 
-                custom_env = self.get_parameters()
-                input_folder = input[dataset]
-                output_folder = os.path.abspath(os.path.join(self.output_folder, dataset))
-                os.makedirs(output_folder, exist_ok=True)
+            custom_env = self.get_parameters()
+            input_folder = input[dataset]
+            output_folder = os.path.abspath(os.path.join(self.output_folder, dataset))
+            os.makedirs(output_folder, exist_ok=True)
 
-                for fname in os.listdir(input_folder):
-                    if fname.endswith(".nc"):
-                        custom_env["INPUT_PATH"] = os.path.join(input_folder, fname)
-                        custom_env["OUTPUT_PATH"] = os.path.join(output_folder, fname)
+            for fname in os.listdir(input_folder):
+                if fname.endswith(".nc"):
+                    custom_env["INPUT_PATH"] = os.path.join(input_folder, fname)
+                    custom_env["OUTPUT_PATH"] = os.path.join(output_folder, fname)
 
-                        script = os.path.join(os.path.split(__file__)[0], "..", "scripts", "add_masks.sh")
+                    script = os.path.join(os.path.split(__file__)[0], "..", "scripts", "add_masks.sh")
 
-                        task_id = executor.queue_task(self.get_stage_id(), script, custom_env,
-                                                      self.get_working_directory(), description=dataset)
+                    task_id = executor.queue_task(self.get_stage_id(), script, custom_env,
+                                                  self.get_working_directory(), description=dataset)
 
-                        executor.wait_for_tasks()
-                        if executor.get_task_result(task_id):
-                            succeeded += 1
-                        else:
-                            failed += 1
-                output_scenes[dataset] = output_folder
+                    executor.wait_for_tasks()
+                    if executor.get_task_result(task_id):
+                        succeeded += 1
+                    else:
+                        failed += 1
+            output_scenes[dataset] = output_folder
 
         summary = f"add_masks: succeeded:{succeeded}, failed:{failed}"
         if succeeded > 0:

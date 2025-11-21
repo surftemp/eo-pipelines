@@ -24,7 +24,6 @@ import os.path
 import json
 
 from eo_pipelines.pipeline_stage import PipelineStage
-from eo_pipelines.executors.executor_factory import ExecutorType
 from eo_pipelines.pipeline_stage_utils import format_int, format_float
 
 
@@ -37,6 +36,8 @@ class LandsatImport(PipelineStage):
         super().__init__(node_services, "landsat_import")
         self.node_services = node_services
 
+    async def load(self):
+        await super().load()
         self.output_path = self.get_configuration().get("output_path", None)
         if self.output_path is None:
             self.output_path = self.get_working_directory()
@@ -56,7 +57,7 @@ class LandsatImport(PipelineStage):
 
     def execute_stage(self, inputs):
 
-        executor = self.create_executor(ExecutorType.Local)
+        executor = self.create_executor()
 
         output_scenes = {}
 
@@ -73,64 +74,63 @@ class LandsatImport(PipelineStage):
 
         total_succeeded = 0
         total_failed = 0
+        input = inputs.get("input", {})
 
-        for input in inputs["input"]:
+        for dataset in input:
+            succeeded = 0
+            failed = 0
 
-            for dataset in input:
-                succeeded = 0
-                failed = 0
+            bands = self.get_spec().get_bands_for_dataset(dataset)
+            export_cmds = []
+            if export_optical_as:
+                export_cmds.append(f"--export-optical-as {export_optical_as}")
+            for band in bands:
+                if band in export_int16:
+                    scale = export_int16[band].get("scale",1)
+                    offset = export_int16[band].get("offset",0)
+                    export_cmds.append(f"--export-int16 {band} {scale} {offset}")
 
-                bands = self.get_spec().get_bands_for_dataset(dataset)
-                export_cmds = []
-                if export_optical_as:
-                    export_cmds.append(f"--export-optical-as {export_optical_as}")
-                for band in bands:
-                    if band in export_int16:
-                        scale = export_int16[band].get("scale",1)
-                        offset = export_int16[band].get("offset",0)
-                        export_cmds.append(f"--export-int16 {band} {scale} {offset}")
+            export_cmd = " ".join(export_cmds)
+            metadata_paths = []
+            dataset_folder = input[dataset]
+            for filename in os.listdir(dataset_folder):
+                if filename.endswith("xml"):
+                    metadata_paths.append(os.path.join(dataset_folder, filename))
 
-                export_cmd = " ".join(export_cmds)
-                metadata_paths = []
-                dataset_folder = input[dataset]
-                for filename in os.listdir(dataset_folder):
-                    if filename.endswith("xml"):
-                        metadata_paths.append(os.path.join(dataset_folder, filename))
+            dataset_output_folder = os.path.join(self.output_path, dataset)
+            os.makedirs(dataset_output_folder, exist_ok=True)
+            output_scenes[dataset] = dataset_output_folder
+            task_ids = []
+            if metadata_paths:
+                for metadata_path in metadata_paths:
+                    metadata_id = os.path.splitext(os.path.split(metadata_path)[1])[0]
+                    custom_env = self.get_parameters()
+                    custom_env["BANDS"] = " ".join(bands)
+                    custom_env["SCENE_PATH"] = metadata_path
+                    custom_env["OUTPUT_PATH"] = dataset_output_folder
+                    custom_env["INJECT_METADATA"] = inject_metadata_cmd
+                    custom_env["EXPORT_CMD"] = export_cmd
 
-                dataset_output_folder = os.path.join(self.output_path, dataset)
-                os.makedirs(dataset_output_folder, exist_ok=True)
-                output_scenes[dataset] = dataset_output_folder
-                task_ids = []
-                if metadata_paths:
-                    for metadata_path in metadata_paths:
-                        metadata_id = os.path.splitext(os.path.split(metadata_path)[1])[0]
-                        custom_env = self.get_parameters()
-                        custom_env["BANDS"] = " ".join(bands)
-                        custom_env["SCENE_PATH"] = metadata_path
-                        custom_env["OUTPUT_PATH"] = dataset_output_folder
-                        custom_env["INJECT_METADATA"] = inject_metadata_cmd
-                        custom_env["EXPORT_CMD"] = export_cmd
+                    script = os.path.join(os.path.split(__file__)[0], "..", "scripts", "landsat_import.sh")
+                    task_id = executor.queue_task(self.get_stage_id(), script, custom_env,
+                                                  self.get_working_directory(),
+                                                  description=metadata_id)
+                    task_ids.append(task_id)
 
-                        script = os.path.join(os.path.split(__file__)[0], "..", "scripts", "landsat_import.sh")
-                        task_id = executor.queue_task(self.get_stage_id(), script, custom_env,
-                                                      self.get_working_directory(),
-                                                      description=metadata_id)
-                        task_ids.append(task_id)
+                executor.wait_for_tasks()
+                for task_id in task_ids:
+                    if executor.get_task_result(task_id):
+                        succeeded += 1
+                    else:
+                        failed += 1
 
-                    executor.wait_for_tasks()
-                    for task_id in task_ids:
-                        if executor.get_task_result(task_id):
-                            succeeded += 1
-                        else:
-                            failed += 1
+                error_fraction = failed / (succeeded + failed)
+                if error_fraction > error_fraction_threshold:
+                    raise Exception(
+                        f"Failed to import dataset {dataset}: error fraction {error_fraction} > threshold {error_fraction_threshold}")
 
-                    error_fraction = failed / (succeeded + failed)
-                    if error_fraction > error_fraction_threshold:
-                        raise Exception(
-                            f"Failed to import dataset {dataset}: error fraction {error_fraction} > threshold {error_fraction_threshold}")
-
-                    total_succeeded += succeeded
-                    total_failed += failed
+                total_succeeded += succeeded
+                total_failed += failed
 
         self.get_logger().info(f"landsat import scenes: succeeded:{total_succeeded}, failed:{total_failed}")
 
