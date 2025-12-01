@@ -121,6 +121,3 @@ class PipelineSpec:
         s += f"\tDate: {self.start_date} - {self.end_date}\n"
         return s
 
-
-if __name__ == '__main__':
-    print(PipelineSpec.convert_lat_or_lon("12.30.0E", is_lat=False))

@@ -27,7 +27,7 @@ from eo_pipelines.pipeline_stage_utils import format_int
 
 
 class XESMFRegrid(PipelineStage):
-    VERSION = "0.0.1"
+    VERSION = "0.0.5"
 
     def __init__(self, node_services):
         super().__init__(node_services, "xesmf_regrid")

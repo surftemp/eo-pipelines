@@ -31,16 +31,9 @@ def main():
     logging.basicConfig(level=logging.INFO,format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     parser = argparse.ArgumentParser()
     parser.add_argument("yaml_path")
-    parser.add_argument("--with-configuration", nargs=2, action="append",
-                        metavar=["config-property-name", "config-property-value"])
     parser.add_argument("--only-stages", nargs="+", metavar=["STAGE_ID"])
     args = parser.parse_args()
     runner = EOPipelineRunner()
-    if args.with_configuration:
-        for override in args.with_configuration:
-            config_property_name = override[0]
-            config_property_value = override[1]
-            runner.configure(config_property_name, config_property_value)
     if not runner.run(args.yaml_path, only_stages=args.only_stages):
         sys.exit(-1)
 

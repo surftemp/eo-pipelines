@@ -27,7 +27,7 @@ from eo_pipelines.pipeline_stage import PipelineStage
 
 
 class ReadDatasetDirectory(PipelineStage):
-    VERSION = "0.0.2"
+    VERSION = "0.0.5"
 
     DEFAULT_RESOLUTION = 50
 

@@ -7,12 +7,14 @@ conda activate landsat_importer_env
 echo landsat_importer $SCENE_PATH $OUTPUT_PATH \
       --min-lat $LAT_MIN --max-lat $LAT_MAX \
       --min-lon $LON_MIN --max-lon $LON_MAX \
-      --bands $BANDS \
+      --bands $BANDS $INJECT_METADATA \
+      --check-version $CHECK_VERSION \
       $EXPORT_CMD
 
 landsat_importer $SCENE_PATH $OUTPUT_PATH \
       --min-lat $LAT_MIN --max-lat $LAT_MAX \
       --min-lon $LON_MIN --max-lon $LON_MAX \
       --bands $BANDS $INJECT_METADATA \
+      --check-version $CHECK_VERSION \
       $EXPORT_CMD
 

@@ -78,6 +78,7 @@ class TimeStacker:
                 for attr_name in attr_names:
                     if attr_name not in self.keep_attributes:
                         del first_ds.attrs[attr_name]
+
                 first_ds.to_netcdf(self.output_path, unlimited_dims=["time"])
                 pos = 1
 

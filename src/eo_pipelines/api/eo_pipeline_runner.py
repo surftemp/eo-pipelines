@@ -29,6 +29,7 @@ import json
 from hyrrokkin.engine_launchers.python_engine_launcher import PythonEngineLauncher
 from hyrrokkin.api.topology import Topology
 from hyrrokkin.utils.yaml_importer import import_from_yaml
+from eo_pipelines.utils.runtime_parameters import RuntimeParameters
 
 schema_path = "eo_pipelines.stages"
 
@@ -38,7 +39,7 @@ class EOPipelineRunner:
     STATUS_FILENAME = "eo-pipeline-status.json"
 
     def __init__(self):
-        self.configuration = {}
+
         self.status = {}
 
         self.status["stage_start_times"] = {}
@@ -46,8 +47,27 @@ class EOPipelineRunner:
         self.status["stage_durations"] = {}
         self.status["executed_stages"] = []
         self.status["stage_failures"] = {}
-
+        self.yaml_path = None
         self.stage_start_times = {}
+
+    def fixup(self, yaml_path):
+        # migrate old-format YAML files (renaming configuration to configurations and grouping package properties under
+        # under a properties key) to work correctly with newer versions of hyrrokkin
+        from yaml import load, FullLoader, dump
+        with open(yaml_path, "r") as from_file:
+            cfg = load(from_file, Loader=FullLoader)
+        if "configuration" in cfg:
+            cfg["configurations"] = cfg["configuration"]
+            del cfg["configuration"]
+            for package_id in cfg["configurations"]:
+                package_properties = {}
+                keys = list(cfg["configurations"][package_id].keys())
+                for key in keys:
+                    package_properties[key] = cfg["configurations"][package_id][key]
+                    del cfg["configurations"][package_id][key]
+                cfg["configurations"][package_id]["properties"] = package_properties
+            with open(yaml_path,"w") as to_file:
+                dump(cfg, to_file, default_flow_style=False, sort_keys=False)
 
     def dump_timestamp(self, ts):
         return datetime.datetime.fromtimestamp(ts).isoformat()
@@ -55,9 +75,6 @@ class EOPipelineRunner:
     def save_status(self):
         with open(EOPipelineRunner.STATUS_FILENAME, "w") as of:
             of.write(json.dumps(self.status, indent=4))
-
-    def configure(self, property_name, property_value):
-        self.configuration[property_name] = property_value
 
     def track_execution(self, timestamp, node_id, state, exn):
         if state == "executing":
@@ -77,6 +94,8 @@ class EOPipelineRunner:
         self.save_status()
 
     def run(self, yaml_path, only_stages=None):
+        RuntimeParameters.set_parameter("YAML_PATH", os.path.abspath(yaml_path))
+
         with tempfile.TemporaryDirectory() as tmpdirname:
 
             t = Topology(tmpdirname, [schema_path])
@@ -86,8 +105,7 @@ class EOPipelineRunner:
                          execution_event_handler=lambda timestamp, node_id, state, exception, is_manual: self.track_execution(
                              timestamp, node_id, state, exception))
 
-            for (property_name, property_value) in self.configuration:
-                t.set_package_property("eo_pipelines", property_name, property_value)
+            self.fixup(yaml_path)
 
             import_from_yaml(t, yaml_path)
 

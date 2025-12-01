@@ -29,7 +29,7 @@ from eo_pipelines.pipeline_stage import PipelineStage
 from eo_pipelines.pipeline_stage_utils import format_int, format_date, format_float
 
 class USGS_Search(PipelineStage):
-    VERSION = "0.0.2"
+    VERSION = "0.0.5"
 
     # by default run 4 download sub-processes, making sure they don't start
     # within 5 seconds of each other (

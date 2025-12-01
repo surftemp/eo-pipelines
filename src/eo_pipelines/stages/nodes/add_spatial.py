@@ -26,7 +26,7 @@ from eo_pipelines.pipeline_stage import PipelineStage
 
 
 class AddSpatial(PipelineStage):
-    VERSION = "0.0.1"
+    VERSION = "0.0.5"
 
     def __init__(self, node_services):
         super().__init__(node_services, "add_spatial")

@@ -135,7 +135,9 @@ exclude_suffix_map = {
 
 
 class USGS_Fetch(PipelineStage):
-    VERSION = "0.0.2"
+
+    VERSION = "0.0.5"
+
     fetch_stage_count = 0
 
     # by default run 4 download sub-processes, making sure they don't start

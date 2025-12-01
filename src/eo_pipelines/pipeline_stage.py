@@ -50,12 +50,8 @@ class PipelineStage:
         self.spec = self.node_services.get_configuration().get_spec()
         self.environment = self.node_services.get_configuration().get_environment()
         self.executor_settings = properties.get("executor_settings", {})
-
-        print(properties,self.configuration)
         self.working_directory = self.configuration.get("working_directory",
-                                                            os.path.join(self.environment.get("working_directory",
-                                                                                                os.getcwd()),
-                                                                         self.stage_id))
+                os.path.join(self.environment.get("working_directory", os.getcwd()), self.stage_id))
 
         if not os.path.isabs(self.working_directory):
             self.working_directory = os.path.abspath(self.working_directory)

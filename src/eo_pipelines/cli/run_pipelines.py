@@ -35,8 +35,6 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("input_paths", nargs="+", help="paths to pipeline files, may contain wildcards")
     parser.add_argument("--limit", type=int, default=None)
-    parser.add_argument("--with-configuration", nargs=2, action="append",
-                        metavar=["config-property-name", "config-property-value"])
     parser.add_argument("--only-stages", nargs="+", metavar=["STAGE_ID"])
 
     args = parser.parse_args()
@@ -55,12 +53,6 @@ def main():
         folder, yaml_filename = os.path.split(yaml_path)
         os.chdir(main_folder)
         os.chdir(folder)
-
-        if args.with_configuration:
-            for override in args.with_configuration:
-                config_property_name = override[0]
-                config_property_value = override[1]
-                runner.configure(config_property_name, config_property_value)
 
         # run the next pipeline
         print(f"running pipeline: {yaml_path} in folder {folder}")

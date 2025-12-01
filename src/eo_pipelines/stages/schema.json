@@ -20,8 +20,7 @@
         "output": {
           "link_type": "eo_pipelines:netcdf_sceneset"
         }
-      },
-      "classname": "nodes.read_dataset_directory.ReadDatasetDirectory"
+      }
     },
     "read_regridded_dataset_directory": {
       "metadata": {
@@ -32,8 +31,7 @@
         "output": {
           "link_type": "eo_pipelines:netcdf_regridded_sceneset"
         }
-      },
-      "classname": "nodes.read_dataset_directory.ReadDatasetDirectory"
+      }
     },
     "usgs_search": {
       "metadata": {
@@ -44,8 +42,7 @@
         "output": {
           "link_type": "eo_pipelines:usgs_scenelist"
         }
-      },
-      "classname": "nodes.usgs_search.USGS_Search"
+      }
     },
     "usgs_fetch": {
       "metadata": {
@@ -62,8 +59,7 @@
         "output": {
           "link_type": "eo_pipelines:raw_sceneset"
         }
-      },
-      "classname": "nodes.usgs_fetch.Fetch"
+      }
     },
     "landsat_import": {
       "metadata": {
@@ -80,8 +76,7 @@
         "output": {
           "link_type": "eo_pipelines:netcdf_sceneset"
         }
-      },
-      "classname": "nodes.landsat_import.LandsatImport"
+      }
     },
     "xesmf_regrid": {
       "metadata": {
@@ -98,8 +93,7 @@
         "output": {
           "link_type": "eo_pipelines:netcdf_regridded_sceneset"
         }
-      },
-      "classname": "nodes.xesmf_regrid.XESMFRegrid"
+      }
     },
     "regrid": {
       "metadata": {
@@ -116,8 +110,7 @@
         "output": {
           "link_type": "eo_pipelines:netcdf_regridded_sceneset"
         }
-      },
-      "classname": "nodes.regrid.Regrid"
+      }
     },
     "group": {
       "metadata": {
@@ -134,8 +127,7 @@
         "output": {
           "link_type": "eo_pipelines:netcdf_regridded_sceneset"
         }
-      },
-      "classname": "nodes.group.Group"
+      }
     },
     "time_stacker": {
       "metadata": {
@@ -152,8 +144,24 @@
         "output": {
           "link_type": "eo_pipelines:netcdf_regridded_sceneset"
         }
+      }
+    },
+    "rubber_stamp": {
+      "metadata": {
+        "name": "RubberStamp",
+        "description": "Rubber Stamp data with details of this pipeline"
       },
-      "classname": "nodes.time_stacker.TimeStacker"
+      "input_ports": {
+        "input": {
+          "allow_multiple_connections": false,
+          "link_type": "eo_pipelines:netcdf_regridded_sceneset"
+        }
+      },
+      "output_ports": {
+        "output": {
+          "link_type": "eo_pipelines:netcdf_regridded_sceneset"
+        }
+      }
     },
     "missing_filter": {
       "metadata": {
@@ -170,8 +178,7 @@
         "output": {
           "link_type": "eo_pipelines:netcdf_regridded_sceneset"
         }
-      },
-      "classname": "nodes.missing_filter.MissingFilter"
+      }
     },
     "add_masks": {
       "metadata": {
@@ -188,8 +195,7 @@
         "output": {
           "link_type": "eo_pipelines:netcdf_regridded_sceneset"
         }
-      },
-      "classname": "nodes.add_masks.AddMasks"
+      }
     },
     "add_spatial": {
       "metadata": {
@@ -206,8 +212,7 @@
         "output": {
           "link_type": "eo_pipelines:netcdf_regridded_sceneset"
         }
-      },
-      "classname": "nodes.add_spatial.AddSpatial"
+      }
     },
     "custom_processor": {
       "metadata": {
@@ -224,8 +229,7 @@
         "output": {
           "link_type": "eo_pipelines:netcdf_regridded_sceneset"
         }
-      },
-      "classname": "nodes.custom_processor.CustomProcessor"
+      }
     },
     "generate_html": {
       "metadata": {
@@ -239,8 +243,7 @@
         }
       },
       "output_ports": {
-      },
-      "classname": "nodes.generate_html.GenerateHtml"
+      }
     },
     "metadata_tweaker": {
       "metadata": {
@@ -257,8 +260,7 @@
         "output": {
           "link_type": "eo_pipelines:netcdf_regridded_sceneset"
         }
-      },
-      "classname": "nodes.metadata_tweaker.MetadataTweaker"
+      }
     }
   },
   "link_types": {
@@ -270,7 +272,7 @@
     },
     "raw_sceneset": {
       "metadata": {
-        "name": "Landsat8 raw scenes",
+        "name": "Landsat raw scenes",
         "description": "A set of raw landsat8 scenes"
       }
     },

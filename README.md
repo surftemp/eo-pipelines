@@ -18,23 +18,24 @@ Installation into a miniforge enviromnent is suggested.  See [https://github.com
 Create a miniforge environment called `eo_pipelines_env` using:
 
 ```
-mamba create -n eo_pipelines_env python=3.10 Mako
+mamba create -n eo_pipelines_env python=3.11 Mako
 mamba activate eo_pipelines_env
 mamba install xarray netcdf4 pyproj requests pandas pillow shapely scipy scikit-learn matplotlib rioxarray
+pip install hyrrokkin[YAML]
 ```
 
 ## Dependencies
 
 The following dependencies need to be installed into the eo_pipelines_env environment, see their READMEs for more information: 
 
-* hyrrokkin - https://github.com/visualtopology/hyrrokkin
+* hyrrokkin - https://codeberg.org/visualtopology/hyrrokkin
 
 ## Defining Pipelines
 
 Pipelines are defined using a YAML file, for example `test_pipeline.yaml`, that starts with a configuration section:
 
 ```yaml
-configuration:
+configurations:
   eo_pipelines:
     # the spec describes global parameters
     spec:

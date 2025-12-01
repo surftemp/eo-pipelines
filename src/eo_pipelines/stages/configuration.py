@@ -1,6 +1,7 @@
 from eo_pipelines.pipeline_spec import PipelineSpec
 import uuid
 
+from .. import VERSION as EO_PIPELINES_VERSION
 from .nodes.read_dataset_directory import ReadDatasetDirectory
 from .nodes.usgs_search import USGS_Search
 from .nodes.usgs_fetch import USGS_Fetch
@@ -15,8 +16,11 @@ from .nodes.add_spatial import AddSpatial
 from .nodes.custom_processor import CustomProcessor
 from .nodes.generate_html import GenerateHtml
 from .nodes.metadata_tweaker import MetadataTweaker
+from .nodes.rubber_stamp import RubberStamp
 
 class Configuration:
+
+    YAML_PATH = ""
 
     def __init__(self, configuration_services):
         self.configuration_services = configuration_services
@@ -25,7 +29,14 @@ class Configuration:
 
     async def load(self):
         properties = await self.configuration_services.get_properties()
+        self.require_version = properties.get("require_version", "")
+        if self.require_version:
+            if self.require_version != EO_PIPELINES_VERSION:
+                raise Exception(
+                    f"Required version {self.require_version} is not equal to the installed version of eo-pipelines: "
+                    f"{EO_PIPELINES_VERSION}")
         self.spec = PipelineSpec(properties.get("spec", {}))
+
         self.environment = (await self.configuration_services.get_properties()).get("environment", {})
         # allocate a unique id for the run if no run_id value is provided
         if "run_id" not in self.environment:
@@ -53,4 +64,5 @@ class Configuration:
             case "custom_processor": return CustomProcessor(node_services)
             case "generate_html": return GenerateHtml(node_services)
             case "metadata_tweaker": return MetadataTweaker(node_services)
+            case "rubber_stamp": return RubberStamp(node_services)
             case _: return None

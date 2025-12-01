@@ -26,7 +26,7 @@ from eo_pipelines.pipeline_stage import PipelineStage
 
 
 class CustomProcessor(PipelineStage):
-    VERSION = "0.0.1"
+    VERSION = "0.0.5"
 
     def __init__(self, node_services):
         super().__init__(node_services, "custom_processor")

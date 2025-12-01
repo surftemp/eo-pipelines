@@ -28,7 +28,7 @@ from eo_pipelines.pipeline_stage_utils import format_int, format_float
 
 
 class LandsatImport(PipelineStage):
-    VERSION = "0.0.2"
+    VERSION = "0.0.5"
 
     DEFAULT_RESOLUTION = 50
 
@@ -110,6 +110,7 @@ class LandsatImport(PipelineStage):
                     custom_env["OUTPUT_PATH"] = dataset_output_folder
                     custom_env["INJECT_METADATA"] = inject_metadata_cmd
                     custom_env["EXPORT_CMD"] = export_cmd
+                    custom_env["CHECK_VERSION"] = LandsatImport.VERSION
 
                     script = os.path.join(os.path.split(__file__)[0], "..", "scripts", "landsat_import.sh")
                     task_id = executor.queue_task(self.get_stage_id(), script, custom_env,
