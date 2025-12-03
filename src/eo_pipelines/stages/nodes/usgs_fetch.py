@@ -136,7 +136,7 @@ exclude_suffix_map = {
 
 class USGS_Fetch(PipelineStage):
 
-    VERSION = "0.0.5"
+    VERSION = "0.4.0"
 
     fetch_stage_count = 0
 
@@ -155,6 +155,7 @@ class USGS_Fetch(PipelineStage):
     async def load(self):
         await super().load()
         self.output_path = self.get_configuration().get("output_path", None)
+        self.check_tool_version = self.get_configuration().get("check_tool_version", True)
         if self.output_path is None:
             self.output_path = self.get_working_directory()
         else:
@@ -254,8 +255,11 @@ class USGS_Fetch(PipelineStage):
                         "FILE_CACHE_INDEX": file_cache_index,
                         "NO_DOWNLOAD": "--no-download" if no_download else "",
                         "DOWNLOAD_SUMMARY_PATH": download_summary_path,
-                        "LIMIT": f"--limit {limit}" if limit else ""
+                        "LIMIT": f"--limit {limit}" if limit else "",
                     }
+
+                    if self.check_tool_version:
+                        custom_env["CHECK_VERSION"] = f"--check-version {USGS_Fetch.VERSION}"
 
                     fetch_script = os.path.join(os.path.split(__file__)[0], "..", "scripts", "usgs_fetch.sh")
                     fetch_task_id = executor.queue_task(self.get_stage_id(), fetch_script, custom_env,

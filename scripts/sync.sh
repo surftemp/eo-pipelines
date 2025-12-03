@@ -11,7 +11,7 @@ if [ -z ${hostname} ] || [ -z ${username} ] || [ -z ${destfolder} ];
 then
   echo provide the hostname, username and destination folder as arguments
 else
-  rsync -avr $rootfolder/src $username@$hostname:$destfolder/eo-pipelines
+  rsync -avr --delete $rootfolder/src $username@$hostname:$destfolder/eo-pipelines
   rsync -avr $rootfolder/example_pipelines $username@$hostname:$destfolder/eo-pipelines
   rsync -avr $rootfolder/pyproject.toml $username@$hostname:$destfolder/eo-pipelines
   rsync -avr $rootfolder/setup.cfg $username@$hostname:$destfolder/eo-pipelines

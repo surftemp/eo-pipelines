@@ -1,21 +1,22 @@
-configuration:
+configurations:
   eo_pipelines:
-    spec:
-      lat_min: 48.5
-      lat_max: 49.2
-      lon_min: 1.9
-      lon_max: 2.8
-      start_date: "2022-07-01"
-      end_date: "2024-03-31"
-      max_cloud_cover_fraction: 1
-      datasets:
-        LANDSAT_OT_C2_L2:
-          bands: [ ST ]
-    environment:
-      working_directory: .
-      conda_path: /home/users/niallmcc/miniforge3/bin/conda
-      shell: "/bin/bash"
-      echo_stdout: True
+    properties:
+      spec:
+        lat_min: 48.5
+        lat_max: 49.2
+        lon_min: 1.9
+        lon_max: 2.8
+        start_date: "2022-07-01"
+        end_date: "2024-03-31"
+        max_cloud_cover_fraction: 1
+        datasets:
+          LANDSAT_OT_C2_L2:
+            bands: [ ST ]
+      environment:
+        working_directory: .
+        conda_path: /home/users/niallmcc/miniforge3/bin/conda
+        shell: "/bin/bash"
+        echo_stdout: True
 nodes:
   n0:
     type: eo_pipelines:usgs_search

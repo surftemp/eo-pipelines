@@ -28,6 +28,7 @@ from eo_pipelines.pipeline_stage_utils import format_int, format_float
 
 
 class LandsatImport(PipelineStage):
+
     VERSION = "0.0.5"
 
     DEFAULT_RESOLUTION = 50
@@ -39,6 +40,7 @@ class LandsatImport(PipelineStage):
     async def load(self):
         await super().load()
         self.output_path = self.get_configuration().get("output_path", None)
+        self.check_tool_version = self.get_configuration().get("check_tool_version", True)
         if self.output_path is None:
             self.output_path = self.get_working_directory()
         else:
@@ -110,7 +112,9 @@ class LandsatImport(PipelineStage):
                     custom_env["OUTPUT_PATH"] = dataset_output_folder
                     custom_env["INJECT_METADATA"] = inject_metadata_cmd
                     custom_env["EXPORT_CMD"] = export_cmd
-                    custom_env["CHECK_VERSION"] = LandsatImport.VERSION
+
+                    if self.check_tool_version:
+                        custom_env["CHECK_VERSION"] = f"--check-version {LandsatImport.VERSION}"
 
                     script = os.path.join(os.path.split(__file__)[0], "..", "scripts", "landsat_import.sh")
                     task_id = executor.queue_task(self.get_stage_id(), script, custom_env,

@@ -1,23 +1,24 @@
-configuration:
+configurations:
   eo_pipelines:
-    spec:
-      lat_min: "67.01.12N"
-      lat_max: "67.04.36N"
-      lon_min: "50.09.51W"
-      lon_max: "49.55.36W"
-      start_date: "2000-10-01"
-      end_date: "2000-10-10"
-      max_cloud_cover_fraction: 1
-      datasets:
-        LANDSAT_ETM_C2_L1:
-          bands: [B1,B2,B3,B4,B5,B6_1,B6_2,B7,QA_PIXEL,SZA,SAA,VZA,VAA]
-        LANDSAT_ETM_C2_L2:
-          bands: [ST,ST_QA]
-    environment:
-      working_directory: .
-      conda_path: /home/users/niallmcc/miniforge3/bin/conda
-      shell: "/bin/bash"
-      echo_stdout: True
+    properties:
+      spec:
+        lat_min: "67.01.12N"
+        lat_max: "67.04.36N"
+        lon_min: "50.09.51W"
+        lon_max: "49.55.36W"
+        start_date: "2000-10-01"
+        end_date: "2000-10-10"
+        max_cloud_cover_fraction: 1
+        datasets:
+          LANDSAT_ETM_C2_L1:
+            bands: [B1,B2,B3,B4,B5,B6_1,B6_2,B7,QA_PIXEL,SZA,SAA,VZA,VAA]
+          LANDSAT_ETM_C2_L2:
+            bands: [ST,ST_QA]
+      environment:
+        working_directory: .
+        conda_path: /home/users/niallmcc/miniforge3/bin/conda
+        shell: "/bin/bash"
+        echo_stdout: True
 nodes:
   n0:
     type: eo_pipelines:usgs_search

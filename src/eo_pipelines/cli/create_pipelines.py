@@ -23,11 +23,14 @@
 import csv
 import os
 import argparse
+import eo_pipelines
+
 from mako.template import Template
 
 
 def main():
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(prog='create_pipelines', usage='%(prog)s [options]')
+    parser.add_argument('-V', '--version', action='version', version="%(prog)s " + eo_pipelines.VERSION)
     parser.add_argument("template_path", help="path to file containing pipeline template")
     parser.add_argument("parameters_path", help="path to csv file containing parameters")
     parser.add_argument("output_folder", help="path to folder in which output pipelines are to be constructed")

@@ -27,7 +27,8 @@ from eo_pipelines.pipeline_stage_utils import format_int
 
 
 class XESMFRegrid(PipelineStage):
-    VERSION = "0.0.5"
+
+    VERSION = "0.0.2"
 
     def __init__(self, node_services):
         super().__init__(node_services, "xesmf_regrid")
@@ -50,6 +51,7 @@ class XESMFRegrid(PipelineStage):
             if not os.path.isabs(self.cache_path):
                 self.cache_path = os.path.join(self.get_working_directory(), self.cache_path)
 
+        self.check_tool_version = self.get_configuration().get("check_tool_version", True)
         self.get_logger().info("eo_pipeline_stages.XESMFRegrid %s" % XESMFRegrid.VERSION)
 
     def get_parameters(self):
@@ -94,6 +96,10 @@ class XESMFRegrid(PipelineStage):
                     custom_env = self.get_parameters()
                     custom_env["INPUT_PATH"] = input_path
                     custom_env["OUTPUT_FOLDER"] = dataset_output_folder
+
+                    if self.check_tool_version:
+                        custom_env["CHECK_VERSION"] = f"--check-version {XESMFRegrid.VERSION}"
+
                     script = os.path.join(os.path.split(__file__)[0], "..", "scripts", "xesmf_regrid.sh")
                     task_id = executor.queue_task(self.get_stage_id(), script, custom_env,
                                                   self.get_working_directory(),

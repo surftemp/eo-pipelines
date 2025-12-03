@@ -4,7 +4,7 @@ eval "$($CONDA_PATH 'shell.bash' 'hook' 2> /dev/null)"
 
 conda activate usgs_env
 
-usgs search-create $DATASET search.json \
+usgs $CHECK_VERSION search-create $DATASET search.json \
       --noninteractive --lat-min $LAT_MIN --lat-max $LAT_MAX \
       --lon-min $LON_MIN --lon-max $LON_MAX \
       --start-date $START_DATE --end-date $END_DATE \

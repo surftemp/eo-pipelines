@@ -29,7 +29,8 @@ from eo_pipelines.pipeline_stage import PipelineStage
 from eo_pipelines.pipeline_stage_utils import format_int, format_date, format_float
 
 class USGS_Search(PipelineStage):
-    VERSION = "0.0.5"
+
+    VERSION = "0.4.0"
 
     # by default run 4 download sub-processes, making sure they don't start
     # within 5 seconds of each other (
@@ -47,6 +48,7 @@ class USGS_Search(PipelineStage):
     async def load(self):
         await super().load()
         self.output_path = self.get_configuration().get("output_path", self.get_working_directory())
+        self.check_tool_version = self.get_configuration().get("check_tool_version", True)
         self.get_logger().info("eo_pipeline_stages.Search %s" % USGS_Search.VERSION)
 
     def get_parameters(self):
@@ -147,6 +149,9 @@ class USGS_Search(PipelineStage):
                     "SCENES_CSV_PATH": scenes_csv_path,
                     "DATASET": dataset
                 }
+
+                if self.check_tool_version:
+                    custom_env["CHECK_VERSION"] = f"--check-version {USGS_Search.VERSION}"
 
                 for key in parameters:
                     custom_env[key] = parameters[key]

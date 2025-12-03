@@ -1,4 +1,4 @@
-configuration:
+configurations:
   eo_pipelines:
     spec:
       lat_min: 52

@@ -24,12 +24,14 @@ import argparse
 import logging
 import sys
 
+import eo_pipelines
 from eo_pipelines.api.eo_pipeline_runner import EOPipelineRunner
 
 
 def main():
     logging.basicConfig(level=logging.INFO,format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(prog='run_pipeline', usage='%(prog)s [options]')
+    parser.add_argument('-V', '--version', action='version', version="%(prog)s " + eo_pipelines.VERSION)
     parser.add_argument("yaml_path")
     parser.add_argument("--only-stages", nargs="+", metavar=["STAGE_ID"])
     args = parser.parse_args()

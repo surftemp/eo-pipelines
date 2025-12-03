@@ -26,7 +26,7 @@ from eo_pipelines.pipeline_stage import PipelineStage
 
 
 class Regrid(PipelineStage):
-    VERSION = "0.0.5"
+    VERSION = "0.0.2"
 
     def __init__(self, node_services):
         super().__init__(node_services, "regrid")
@@ -41,7 +41,7 @@ class Regrid(PipelineStage):
         else:
             if not os.path.isabs(self.output_path):
                 self.output_path = os.path.join(self.get_working_directory(), self.output_path)
-
+        self.check_tool_version = self.get_configuration().get("check_tool_version", True)
         self.get_logger().info("eo_pipeline_stages.Regrid %s" % Regrid.VERSION)
 
     def get_parameters(self):
@@ -87,6 +87,10 @@ class Regrid(PipelineStage):
                 for input_path in input_paths:
                     custom_env = self.get_parameters()
                     custom_env["INPUT_PATH"] = input_path
+
+                    if self.check_tool_version:
+                        custom_env["CHECK_VERSION"] = f"--check-version {Regrid.VERSION}"
+
                     input_filename = os.path.split(input_path)[-1]
                     output_path = os.path.join(dataset_output_folder, input_filename)
                     custom_env["OUTPUT_PATH"] = output_path

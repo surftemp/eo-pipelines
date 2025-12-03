@@ -38,28 +38,29 @@ Pipelines are defined using a YAML file, for example `test_pipeline.yaml`, that 
 configurations:
   eo_pipelines:
     # the spec describes global parameters
-    spec:
-      # define the region of interest
-      lat_min: "72.35.56N"
-      lat_max: "64.44.52N"
-      lon_min: "54.46.05W"
-      lon_max: "53.49.56W"
-      # and the time range
-      start_date: "2021-06-01"
-      end_date: "2021-08-31"
-      # filter out scenes thought to have more than 10% cloud cover
-      max_cloud_cover_fraction: 0.1
-      # specify the datasets of interest
-      datasets:
-        LANDSAT_OT_C2_L1:
-          bands: [ B1,B2,B3,B4,B5,B6,B7,B8,B9,B10,B11,QA_PIXEL ]
-    # the environment describes how 
-    environment:
-      working_directory: /tmp/pipeline_test
-      conda_path: /home/users/myuser/miniconda3/bin/conda
-      shell: "/bin/bash"
-      echo_stdout: True
-      tracking_database_path: /tmp/tracking.db # optional - path to a database that is used to record task execution statistics
+    properties:
+      spec:
+        # define the region of interest
+        lat_min: "72.35.56N"
+        lat_max: "64.44.52N"
+        lon_min: "54.46.05W"
+        lon_max: "53.49.56W"
+        # and the time range
+        start_date: "2021-06-01"
+        end_date: "2021-08-31"
+        # filter out scenes thought to have more than 10% cloud cover
+        max_cloud_cover_fraction: 0.1
+        # specify the datasets of interest
+        datasets:
+          LANDSAT_OT_C2_L1:
+            bands: [ B1,B2,B3,B4,B5,B6,B7,B8,B9,B10,B11,QA_PIXEL ]
+      # the environment describes how 
+      environment:
+        working_directory: /tmp/pipeline_test
+        conda_path: /home/users/myuser/miniconda3/bin/conda
+        shell: "/bin/bash"
+        echo_stdout: True
+        tracking_database_path: /tmp/tracking.db # optional - path to a database that is used to record task execution statistics
 ```
 
 Following the configuration, each stage in the pipeline is described
@@ -158,6 +159,7 @@ Pipleline stages currently supported:
 | **add_masks**       | add mask layers defined by geojson files                                                    | eo_pipelines_env           |
 | **add_spatial**     | add spatial layers defined by netcdf4 files                                                 | eo_pipelines_env           |
 | **generate_html**   | create an interactive static HTML website for exploring netcdf files                        | netcdf_explorer_env        |
+ | **rubber_stamp**   | write the pipeline YAML definition and path into the data files                             | eo_pipelines_env           | 
 
 ## Required conda environments
 
@@ -247,3 +249,64 @@ running the tool will create the following directory structure
         pipeline1/
             pipeline.yaml
 ```
+
+## Reproducibilty
+
+* eo_pipelines versioning
+
+The eo_pipelines version string is specified in `eo_pipelines.VERSION` and this defines the version number in the eo_pipelines python package.
+ 
+Non-trivial updates to the eo_pipelines package require an update to the version number
+
+* A pipeline can specify that a particular version of the eo_pipelines package is installed.
+
+To specify that a particular version is included in the pipeline add `require_version` to the eo_pipelines configuration in the pipeline YAML file:
+
+```yaml
+configurations:
+  eo_pipelines:
+    # the spec describes global parameters
+    properties:
+      require_version: "0.0.5"
+```
+
+* Each pipeline stage is assigned its own version string.  Whenever one of these is increased, the eo_pipelines version should also be increased.
+
+For an example of the pipeline stage versioning:
+
+[src/eo_pipelines/stages/nodes/usgs_fetch.py](src/eo_pipelines/stages/nodes/usgs_fetch.py)
+
+```python
+
+...
+class USGS_Fetch(PipelineStage):
+
+    VERSION = "0.4.0"
+
+    ...
+```
+
+Non-trivial updates to a pipeline stage should trigger version incremements for both the stage and the eo_pipelines package.
+
+* Some pipeline stages call out to external tools rather than executing code within the package.  The version of the tool is by default checked against the version of the stage.
+
+To suppress this version checking, add `check_tool_version: false` to the stage configuration.
+
+The following stages use external tools:
+
+* usgs_search
+* usgs_fetch
+* landsat_import
+* regrid
+* xesmf_regrid
+
+The external tools support a `--check-version <VERSION>` command line option
+
+Versions of the stages and tools should be kept in sync
+
+* tagging source code in git
+
+For code that is stored in a git repo, for each version number update to a tool or the eo_pipelines package, the code should be tagged with that version
+
+
+

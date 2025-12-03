@@ -26,11 +26,12 @@ import glob
 import json
 
 from .run_pipeline import EOPipelineRunner
-
+import eo_pipelines
 
 def main():
     import argparse
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(prog='manage_pipelines', usage='%(prog)s [options]')
+    parser.add_argument('-V', '--version', action='version', version="%(prog)s " + eo_pipelines.VERSION)
     parser.add_argument("input_paths", nargs="+", help="paths to pipeline files, may contain wildcards")
     parser.add_argument("--launch-command", type=str, help="command to launch a pipeline", default="sbatch run.sh")
     parser.add_argument("--launch-count", type=int, help="number of jobs to launch", default=0)

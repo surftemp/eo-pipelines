@@ -23,8 +23,8 @@
 import argparse
 import logging
 import os
-import json
 
+import eo_pipelines
 from eo_pipelines.api.eo_pipeline_runner import EOPipelineRunner
 
 import glob
@@ -32,7 +32,8 @@ import glob
 
 def main():
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(prog='run_pipelines', usage='%(prog)s [options]')
+    parser.add_argument('-V', '--version', action='version', version="%(prog)s " + eo_pipelines.VERSION)
     parser.add_argument("input_paths", nargs="+", help="paths to pipeline files, may contain wildcards")
     parser.add_argument("--limit", type=int, default=None)
     parser.add_argument("--only-stages", nargs="+", metavar=["STAGE_ID"])

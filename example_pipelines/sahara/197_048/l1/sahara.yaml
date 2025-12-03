@@ -1,3 +1,34 @@
+configurations:
+  eo_pipelines:
+    properties:
+      spec:
+        lat_min: 16.6
+        lat_max: 17.3
+        lon_min: 2.6
+        lon_max: 3.1
+        start_date: '2024-07-01'
+        end_date: '2024-07-30'
+        max_cloud_cover_fraction: 1
+        datasets:
+          LANDSAT_OT_C2_L1:
+            bands:
+            - B2
+            - B3
+            - B4
+            - B5
+            - B6
+            - B10
+            - B11
+            - QA_PIXEL
+            - VAA
+            - VZA
+            - SAA
+            - SZA
+      environment:
+        working_directory: .
+        conda_path: /home/dev/miniforge3/condabin/conda
+        shell: /bin/bash
+        echo_stdout: true
 nodes:
   n0:
     type: eo_pipelines:usgs_search
@@ -32,34 +63,4 @@ nodes:
 links:
 - n0 => n1
 - n1 => n2
-configurations:
-  eo_pipelines:
-    properties:
-      spec:
-        lat_min: 16.6
-        lat_max: 17.3
-        lon_min: 2.6
-        lon_max: 3.1
-        start_date: '2024-07-01'
-        end_date: '2024-07-30'
-        max_cloud_cover_fraction: 1
-        datasets:
-          LANDSAT_OT_C2_L1:
-            bands:
-            - B2
-            - B3
-            - B4
-            - B5
-            - B6
-            - B10
-            - B11
-            - QA_PIXEL
-            - VAA
-            - VZA
-            - SAA
-            - SZA
-      environment:
-        working_directory: .
-        conda_path: /home/dev/miniforge3/condabin/conda
-        shell: /bin/bash
-        echo_stdout: true
+
