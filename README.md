@@ -252,15 +252,29 @@ running the tool will create the following directory structure
 
 ## Reproducibilty
 
-* eo_pipelines versioning
+Ideally, it would be possible to know which software was used to run a pipeline.  eo_pipelines adopts the following strategy:
+
+* strict versioning of the eo_pipelines package, individual pipeline stages and external tools used to run stages
+* tag source code in git with the versions
+* embed a required eo_pipelines version string in the pipeline
+* cross-check version numbers between pipeline stages and external tools
+* use the rubber_stamp stage (see above) to embed the pipeline string into data products
+
+### eo_pipelines versioning
 
 The eo_pipelines version string is specified in `eo_pipelines.VERSION` and this defines the version number in the eo_pipelines python package.
  
 Non-trivial updates to the eo_pipelines package require an update to the version number
 
-* A pipeline can specify that a particular version of the eo_pipelines package is installed.
+### version format
 
-To specify that a particular version is included in the pipeline add `require_version` to the eo_pipelines configuration in the pipeline YAML file:
+A `<major>.<minor>.<release>` format is suggested for all version strings used
+
+### embedding the eo_pipelines version in a pipeline YAML
+
+A pipeline can specify that a particular version of the eo_pipelines package is used to run the pipeline.
+
+Add `require_version` to the eo_pipelines configuration in the pipeline YAML file:
 
 ```yaml
 configurations:
@@ -270,7 +284,9 @@ configurations:
       require_version: "0.0.5"
 ```
 
-* Each pipeline stage is assigned its own version string.  Whenever one of these is increased, the eo_pipelines version should also be increased.
+### per-stage version numbers
+
+Each pipeline stage is assigned its own version string.  Whenever one of these is increased, the eo_pipelines version should also be increased.
 
 For an example of the pipeline stage versioning:
 
@@ -288,7 +304,9 @@ class USGS_Fetch(PipelineStage):
 
 Non-trivial updates to a pipeline stage should trigger version incremements for both the stage and the eo_pipelines package.
 
-* Some pipeline stages call out to external tools rather than executing code within the package.  The version of the tool is by default checked against the version of the stage.
+### external tool version numbers
+
+Some pipeline stages call out to external tools rather than executing code within the package.  The version of the tool is by default checked against the version of the stage.
 
 To suppress this version checking, add `check_tool_version: false` to the stage configuration.
 
@@ -304,9 +322,13 @@ The external tools support a `--check-version <VERSION>` command line option
 
 Versions of the stages and tools should be kept in sync
 
-* tagging source code in git
+### tagging source code in git
 
 For code that is stored in a git repo, for each version number update to a tool or the eo_pipelines package, the code should be tagged with that version
 
-
+```
+git tag -a X.Y.Z
+git show X.Y.Z
+git push origin X.Y.Z
+```
 

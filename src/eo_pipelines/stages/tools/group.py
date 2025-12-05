@@ -204,8 +204,8 @@ class GroupProcessor:
                                     combined_ds[v] = ds[v]
                                 else:
                                     a = combined_ds[v].values
-                                    if overlap_mask is None:
-                                        # no overlap mask, simply overwrite any NaN valued pixels in this band
+                                    if overlap_mask is None or overlap_mask.shape != a.shape:
+                                        # no valid overlap mask, simply overwrite any NaN valued pixels in this band
                                         a = np.where(np.isnan(a), ds[v].values, a)
                                     else:
                                         # using the overlap mask, only overwrite pixels where the overlap band is NaN
