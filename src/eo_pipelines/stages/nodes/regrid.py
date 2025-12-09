@@ -46,7 +46,6 @@ class Regrid(PipelineStage):
 
     def get_parameters(self):
         return {
-            "GRID_PATH": self.get_configuration().get("target_grid_path"),
             "SOURCE_X": self.get_configuration().get("source_x"),
             "SOURCE_Y": self.get_configuration().get("source_y"),
             "SOURCE_CRS": str(self.get_configuration().get("source_crs")),
@@ -69,6 +68,12 @@ class Regrid(PipelineStage):
 
         input = inputs.get("input",{})
 
+        input_grid_path = self.get_configuration().get("target_grid_path")
+        if input_grid_path is None:
+            input_grid_path = inputs.get("input_grid",None)
+        if input_grid_path is None:
+            raise ValueError("No input grid provided")
+
         for dataset in input:
             succeeded = 0
             failed = 0
@@ -87,6 +92,7 @@ class Regrid(PipelineStage):
                 for input_path in input_paths:
                     custom_env = self.get_parameters()
                     custom_env["INPUT_PATH"] = input_path
+                    custom_env["GRID_PATH"] = input_grid_path
 
                     if self.check_tool_version:
                         custom_env["CHECK_VERSION"] = f"--check-version {Regrid.VERSION}"

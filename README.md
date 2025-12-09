@@ -146,20 +146,22 @@ Most nodes execute themselves by launching one or more tasks, which can be run o
 
 Pipleline stages currently supported:
 
-| stage_name          | purpose                                                                                     | required conda environment |
-|---------------------|---------------------------------------------------------------------------------------------|----------------------------|
-| **usgs_search**     | find landsat scenes using the usgs tool                                                     | usgs_env                   |
-| **usgs_fetch**      | download landsat scenes using the usgs_download tool                                        | usgs_env                   |
-| **landsat_import**  | convert landsat scenes to netcdf4                                                           | landsat_importer_env       |
-| **xesmf_regrid**    | regrid scenes onto a target grid using XESMF                                                | xarray_regridder_env       |
-| **regrid**          | regrid scenes onto a target grid using xarray_regridder                                     | xarray_regridder_env       |  
-| **group**           | combine/stack scenes from the same orbit (also across different datasets) after regridding  | eo_pipelines_env           | 
-| **metadata_tweaker** | output a netcdf4 with adjusted metadata for each input file                                | eo_pipelines_env           |
-| **time_stacker**    | combine a number of separate netcdf4 files into one file by appending along the time access | eo_pipelines_env           | 
-| **add_masks**       | add mask layers defined by geojson files                                                    | eo_pipelines_env           |
-| **add_spatial**     | add spatial layers defined by netcdf4 files                                                 | eo_pipelines_env           |
-| **generate_html**   | create an interactive static HTML website for exploring netcdf files                        | netcdf_explorer_env        |
- | **rubber_stamp**   | write the pipeline YAML definition and path into the data files                             | eo_pipelines_env           | 
+| stage_name           | purpose                                                                                     | required conda environment |
+|----------------------|---------------------------------------------------------------------------------------------|----------------------------|
+| **usgs_search**      | find landsat scenes using the usgs tool                                                     | usgs_env                   |
+| **usgs_fetch**       | download landsat scenes using the usgs_download tool                                        | usgs_env                   |
+| **landsat_import**   | convert landsat scenes to netcdf4                                                           | landsat_importer_env       |
+| **xesmf_regrid**     | regrid scenes onto a target grid using XESMF                                                | xarray_regridder_env       |
+| **regrid**           | regrid scenes onto a target grid using xarray_regridder                                     | xarray_regridder_env       |  
+| **group**            | combine/stack scenes from the same orbit (also across different datasets) after regridding  | eo_pipelines_env           | 
+| **metadata_tweaker** | output a netcdf4 with adjusted metadata for each input file                                 | eo_pipelines_env           |
+| **time_stacker**     | combine a number of separate netcdf4 files into one file by appending along the time access | eo_pipelines_env           | 
+| **add_masks**        | add mask layers defined by geojson files                                                    | eo_pipelines_env           |
+| **add_spatial**      | add spatial layers defined by netcdf4 files                                                 | eo_pipelines_env           |
+| **generate_html**    | create an interactive static HTML website for exploring netcdf files                        | netcdf_explorer_env        |
+| **rubber_stamp**     | write the pipeline YAML definition and path into the data files                             | eo_pipelines_env           | 
+| **apply_fmask**      | annotate raw landsat scenes with the fmask 5.0.1 cloud mask                                 | fmask                      |
+| **create_grid**      | create a spatial grid - currently lat-lon only - that can be input to the **regrid** stage  | eo_pipelines_env           | 
 
 ## Required conda environments
 
@@ -182,6 +184,10 @@ https://github.com/surftemp/xarray_regridder
 ### netcdf_explorer_env
 
 https://github.com/surftemp/netcdf_explorer
+
+### fmask
+
+See https://github.com/GERSL/Fmask
 
 ## Running pipelines
 
@@ -250,7 +256,7 @@ running the tool will create the following directory structure
             pipeline.yaml
 ```
 
-## Reproducibilty
+## Reproducibility
 
 Ideally, it would be possible to know which software was used to run a pipeline.  eo_pipelines adopts the following strategy:
 

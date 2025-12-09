@@ -18,6 +18,7 @@ from .nodes.generate_html import GenerateHtml
 from .nodes.metadata_tweaker import MetadataTweaker
 from .nodes.rubber_stamp import RubberStamp
 from .nodes.apply_fmask import ApplyFMask
+from .nodes.create_grid import CreateGrid
 
 class Configuration:
 
@@ -67,4 +68,5 @@ class Configuration:
             case "metadata_tweaker": return MetadataTweaker(node_services)
             case "rubber_stamp": return RubberStamp(node_services)
             case "apply_fmask": return ApplyFMask(node_services)
+            case "create_grid": return CreateGrid(node_services)
             case _: return None

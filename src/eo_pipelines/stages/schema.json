@@ -11,6 +11,17 @@
     "classname": "configuration.Configuration"
   },
   "node_types": {
+    "create_grid": {
+      "metadata": {
+        "name": "Create a grid",
+        "description": "Create a spatial grid based on bounds and resolution"
+      },
+      "output_ports": {
+        "output": {
+          "link_type": "eo_pipelines:grid"
+        }
+      }
+    },
     "read_dataset_directory": {
       "metadata": {
         "name": "Read dataset directory",
@@ -121,6 +132,10 @@
         "input": {
           "allow_multiple_connections": false,
           "link_type": "eo_pipelines:netcdf_sceneset"
+        },
+        "input_grid": {
+          "allow_multiple_connections": false,
+          "link_type": "eo_pipelines:grid"
         }
       },
       "output_ports": {
@@ -285,6 +300,12 @@
       "metadata": {
         "name": "Lists of USGS scenes",
         "description": "A dictionary mapping from USGS dataset name to [catalog,dataset,scene-id]"
+      }
+    },
+    "grid": {
+      "metadata": {
+        "name": "A spatial grid",
+        "description": "A spatial grid with x and y coordinates for a particular CRS"
       }
     },
     "raw_sceneset": {
