@@ -17,6 +17,7 @@ from .nodes.custom_processor import CustomProcessor
 from .nodes.generate_html import GenerateHtml
 from .nodes.metadata_tweaker import MetadataTweaker
 from .nodes.rubber_stamp import RubberStamp
+from .nodes.apply_fmask import ApplyFMask
 
 class Configuration:
 
@@ -65,4 +66,5 @@ class Configuration:
             case "generate_html": return GenerateHtml(node_services)
             case "metadata_tweaker": return MetadataTweaker(node_services)
             case "rubber_stamp": return RubberStamp(node_services)
+            case "apply_fmask": return ApplyFMask(node_services)
             case _: return None

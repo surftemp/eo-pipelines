@@ -6,12 +6,12 @@ configurations:
         lat_max: 51.7
         lon_min: -0.2
         lon_max: 0.1
-        start_date: "2023-01-01"
-        end_date: "2025-12-30"
+        start_date: "2023-07-01"
+        end_date: "2023-07-30"
         max_cloud_cover_fraction: 1
         datasets:
           LANDSAT_OT_C2_L1:
-            bands: [ B2, B3, B4, B5, B6, B10, B11, QA_PIXEL, VAA, VZA, SAA, SZA ]
+            bands: [ B1, B2, B3, B4, B5, B6, B7, B8, B9, B10, B11, QA_PIXEL, VAA, VZA, SAA, SZA ]
       environment:
         working_directory: .
         conda_path: /home/dev/miniforge3/bin/conda
@@ -22,8 +22,8 @@ nodes:
     type: eo_pipelines:usgs_search
     properties:
       configuration:
-        night: True
-        limit: 4
+        row: 24
+        path: 201
       executor_settings:
         can_skip: true
   n1:
@@ -34,6 +34,19 @@ nodes:
       executor_settings:
         can_skip: true
   n2:
+    type: eo_pipelines:apply_fmask
+    properties:
+      executor_settings:
+        can_skip: 4
+        executor: local
+        local:
+          nr_threads: 1
+      configuration:
+        output_path: masked
+        model: UPL
+        fmask_home: /home/dev/Tools/fmask/fmask
+        dataset: LANDSAT_OT_C2_L1
+  n3:
     type: eo_pipelines:landsat_import
     properties:
       executor_settings:
@@ -43,24 +56,11 @@ nodes:
           nr_threads: 1
       configuration:
         output_path: imported
-        export_optical_as: reflectance
-        export_int16:
-          B2:
-            scale:
-              0.001
-          B3:
-            scale:
-              0.001
-          B4:
-            scale:
-              0.001
-          B5:
-            scale:
-              0.001
-          B6:
-            scale:
-              0.001
+        extra_bands:
+          LANDSAT_OT_C2_L1:
+            - UPL
 
 links:
   - n0 => n1
   - n1 => n2
+  - n2 => n3

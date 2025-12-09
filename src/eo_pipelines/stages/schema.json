@@ -61,6 +61,23 @@
         }
       }
     },
+    "apply_fmask": {
+      "metadata": {
+        "name": "Apply FMask",
+        "description": "Apply the FMask 5 cloud screening algorithm"
+      },
+      "input_ports": {
+        "input": {
+          "allow_multiple_connections": false,
+          "link_type": "eo_pipelines:raw_sceneset"
+        }
+      },
+      "output_ports": {
+        "output": {
+          "link_type": "eo_pipelines:raw_sceneset"
+        }
+      }
+    },
     "landsat_import": {
       "metadata": {
         "name": "Import",

@@ -29,7 +29,7 @@ from eo_pipelines.pipeline_stage_utils import format_int, format_float
 
 class LandsatImport(PipelineStage):
 
-    VERSION = "0.0.5"
+    VERSION = "0.0.6"
 
     DEFAULT_RESOLUTION = 50
 
@@ -73,6 +73,7 @@ class LandsatImport(PipelineStage):
         error_fraction_threshold = self.get_configuration().get("error_fraction_threshold", 0.03)
         export_optical_as = self.get_configuration().get("export_optical_as","")
         export_int16 = self.get_configuration().get("export_int16",{})
+        extra_bands = self.get_configuration().get("extra_bands",{})
 
         total_succeeded = 0
         total_failed = 0
@@ -83,16 +84,17 @@ class LandsatImport(PipelineStage):
             failed = 0
 
             bands = self.get_spec().get_bands_for_dataset(dataset)
-            export_cmds = []
+            extra_cmds = []
             if export_optical_as:
-                export_cmds.append(f"--export-optical-as {export_optical_as}")
+                extra_cmds.append(f"--export-optical-as {export_optical_as}")
             for band in bands:
                 if band in export_int16:
                     scale = export_int16[band].get("scale",1)
                     offset = export_int16[band].get("offset",0)
-                    export_cmds.append(f"--export-int16 {band} {scale} {offset}")
-
-            export_cmd = " ".join(export_cmds)
+                    extra_cmds.append(f"--export-int16 {band} {scale} {offset}")
+            if dataset in extra_bands:
+                    extra_cmds.append(f"--extra-bands {' '.join(extra_bands[dataset])}")
+            extra_options = " ".join(extra_cmds)
             metadata_paths = []
             dataset_folder = input[dataset]
             for filename in os.listdir(dataset_folder):
@@ -111,7 +113,7 @@ class LandsatImport(PipelineStage):
                     custom_env["SCENE_PATH"] = metadata_path
                     custom_env["OUTPUT_PATH"] = dataset_output_folder
                     custom_env["INJECT_METADATA"] = inject_metadata_cmd
-                    custom_env["EXPORT_CMD"] = export_cmd
+                    custom_env["EXTRA_OPTIONS"] = extra_options
 
                     if self.check_tool_version:
                         custom_env["CHECK_VERSION"] = f"--check-version {LandsatImport.VERSION}"

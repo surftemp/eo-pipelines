@@ -25,14 +25,25 @@ import datetime
 import os
 import tempfile
 import json
+from typing import Literal
 
 from hyrrokkin.engine_launchers.python_engine_launcher import PythonEngineLauncher
 from hyrrokkin.api.topology import Topology
+from hyrrokkin.api.topology_listener_base import TopologyListenerBase
 from hyrrokkin.utils.yaml_importer import import_from_yaml
 from eo_pipelines.utils.runtime_parameters import RuntimeParameters
 
 schema_path = "eo_pipelines.stages"
 
+class EOPipelineListener(TopologyListenerBase):
+
+    def __init__(self, eo_pipeline_runner):
+        self.eo_pipeline_runner = eo_pipeline_runner
+
+    def execution_event(self, timestamp: float | None, node_id: str,
+                        state: Literal["pending","running","completed","failed"],
+                        error: str | None, is_manual: bool) -> None:
+        self.eo_pipeline_runner.track_execution(timestamp, node_id, state, error)
 
 class EOPipelineRunner:
 
@@ -98,29 +109,24 @@ class EOPipelineRunner:
 
         with tempfile.TemporaryDirectory() as tmpdirname:
 
-            t = Topology(tmpdirname, [schema_path])
+            t = Topology(tmpdirname, [schema_path],
+                         engine_launcher=PythonEngineLauncher(verbose=False, in_process=True,
+                                                              persistence="memory"), import_from_path=yaml_path)
 
-            runner = t.open_runner(
-                         engine_launcher=PythonEngineLauncher(verbose=False, in_process=True, persistence="shared_filesystem"),
-                         execution_event_handler=lambda timestamp, node_id, state, exception, is_manual: self.track_execution(
-                             timestamp, node_id, state, exception))
+            t.attach_listener(EOPipelineListener(self))
 
-            self.fixup(yaml_path)
-
-            import_from_yaml(t, yaml_path)
-
-            stage_ids = t.get_node_ids()
+            stage_ids = list(t.get_nodes().keys())
             if only_stages:
                 for stage_id in stage_ids:
                     if stage_id not in only_stages:
                         t.remove_node(stage_id)
-                stage_ids = t.get_node_ids()
+                stage_ids = list(t.get_nodes().keys())
 
             self.status["running"] = datetime.datetime.now().isoformat()
             self.status["stage_ids"] = stage_ids
             self.save_status()
 
-            ok = runner.run()
+            ok = t.run()
 
             if ok:
                 self.status["succeeded"] = datetime.datetime.now().isoformat()

@@ -222,7 +222,7 @@ class USGS_Fetch(PipelineStage):
 
                     suffix_mapping = suffix_map.get(dataset, {})
 
-                    suffixes = [".XML"]
+                    suffixes = [".XML", ".TXT"]
 
                     for band_name in suffix_mapping:
                         if len(required_bands) == 0 or band_name in required_bands:
