@@ -36,8 +36,7 @@ class Configuration:
                     f"Required version {self.require_version} is not equal to the installed version of eo-pipelines: "
                     f"{EO_PIPELINES_VERSION}")
         self.spec = PipelineSpec(properties.get("spec", {}))
-
-        self.environment = (await self.configuration_services.get_properties()).get("environment", {})
+        self.environment = properties.get("environment", {})
         # allocate a unique id for the run if no run_id value is provided
         if "run_id" not in self.environment:
             self.environment["run_id"] = str(uuid.uuid4())
