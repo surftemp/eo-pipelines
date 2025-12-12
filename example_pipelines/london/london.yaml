@@ -14,7 +14,7 @@ configurations:
             bands: [ B2, B3, B4, B5, B6, B10, B11, QA_PIXEL, VAA, VZA, SAA, SZA ]
       environment:
         working_directory: .
-        conda_path: /home/users/niallmcc/miniforge3/bin/conda
+        conda_path: /home/dev/miniforge3/bin/conda
         shell: "/bin/bash"
         echo_stdout: True
 nodes:

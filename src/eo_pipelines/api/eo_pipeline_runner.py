@@ -101,7 +101,7 @@ class EOPipelineRunner:
             t = Topology(tmpdirname, [schema_path])
 
             runner = t.open_runner(
-                         engine_launcher=PythonEngineLauncher(verbose=False, in_process=True, persistence="shared_filesystem"),
+                         engine_launcher=PythonEngineLauncher(verbose=False, in_process=True),
                          execution_event_handler=lambda timestamp, node_id, state, exception, is_manual: self.track_execution(
                              timestamp, node_id, state, exception))
 
