@@ -28,7 +28,7 @@ from eo_pipelines.pipeline_stage import PipelineStage
 DEFAULT_TIME_WINDOW_SECONDS = 300
 
 class Group(PipelineStage):
-    VERSION = "0.0.5"
+    VERSION = "0.0.5a"
 
     def __init__(self, node_services):
         super().__init__(node_services, "group")

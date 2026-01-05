@@ -29,12 +29,6 @@ class Configuration:
 
     async def load(self):
         properties = await self.configuration_services.get_properties()
-        self.require_version = properties.get("require_version", "")
-        if self.require_version:
-            if self.require_version != EO_PIPELINES_VERSION:
-                raise Exception(
-                    f"Required version {self.require_version} is not equal to the installed version of eo-pipelines: "
-                    f"{EO_PIPELINES_VERSION}")
         self.spec = PipelineSpec(properties.get("spec", {}))
         self.environment = properties.get("environment", {})
         # allocate a unique id for the run if no run_id value is provided

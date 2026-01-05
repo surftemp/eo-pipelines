@@ -69,6 +69,7 @@ class CustomProcessor(PipelineStage):
             input_folder = input[dataset]
 
             custom_env = {
+                "REQUIRED_VERSION": CustomProcessor.VERSION,
                 "INPUT_FOLDER": input_folder,
                 "OUTPUT_FOLDER": output_folder
             }

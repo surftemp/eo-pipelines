@@ -90,18 +90,21 @@ class GroupProcessor:
                 self.logger.info(f"find_groups opening: {path}")
                 if not path.endswith(".nc"):
                     continue
-                with xr.open_dataset(path) as ds:
-                    dt = date_parse(ds.attrs["acquisition_time"])
-                    group_attrs = [ds.attrs[attr] for attr in group_by_attributes]
+                try:
+                    with xr.open_dataset(path) as ds:
+                        dt = date_parse(ds.attrs["acquisition_time"])
+                        group_attrs = [ds.attrs[attr] for attr in group_by_attributes]
 
-                added = False
-                for group in self.groups:
-                    if group.extend(dt, dataset, path, group_attrs, self.time_window_seconds):
-                        added = True
-                        break
-                if not added:
-                    self.groups.append(Group(dt, dt, dataset, path, group_attrs))
-                    self.logger.info(f"Creating group: {len(self.groups)}")
+                    added = False
+                    for group in self.groups:
+                        if group.extend(dt, dataset, path, group_attrs, self.time_window_seconds):
+                            added = True
+                            break
+                    if not added:
+                        self.groups.append(Group(dt, dt, dataset, path, group_attrs))
+                        self.logger.info(f"Creating group: {len(self.groups)}")
+                except:
+                    self.logger.exception(f"Error processing: {path}")
 
         self.logger.info("Found %d groups:" % len(self.groups))
 
@@ -115,30 +118,31 @@ class GroupProcessor:
 
             group_index += 1
             self.logger.info("Processing group (%d/%d): %s" % (group_index, len(self.groups), str(group)))
-            combined_ds = None
-            combined_filename = ""
-            datasets = self.input_spec["datasets"].keys()
-
-            valid_group = True
-
-            # make sure each dataset is represented in this group
-            for dataset in datasets:
-                if len(group.get_scenes_for_dataset(dataset)) == 0:
-                    self.logger.warning("Skipping group containing no data for dataset %s" % dataset)
-                    valid_group = False
-
-            # if not, skip it
-            if not valid_group:
-                continue
-
-            # track the output variables for each dataset
-            output_variables_by_dataset = {}
-            for dataset in datasets:
-                output_variables_by_dataset[dataset] = set()
 
             try:
-                processing_levels = set()
+                combined_ds = None
+                combined_filename = ""
+                datasets = self.input_spec["datasets"].keys()
+
+                valid_group = True
+
+                # make sure each dataset is represented in this group
                 for dataset in datasets:
+                    if len(group.get_scenes_for_dataset(dataset)) == 0:
+                        self.logger.warning("Skipping group containing no data for dataset %s" % dataset)
+                        valid_group = False
+
+                # if not, skip it
+                if not valid_group:
+                    continue
+
+                # track the output variables for each dataset
+                output_variables_by_dataset = {}
+                processing_levels = set()
+
+                for dataset in datasets:
+                    output_variables_by_dataset[dataset] = set()
+
                     # merge in all the scenes for this particular dataset
                     # if multiple scenes exist this involves "stitching" scenes together "along" the orbit
 
@@ -156,6 +160,7 @@ class GroupProcessor:
                                     dataset, group_index, len(self.groups), overlap_using[dataset]))
 
                     for path in paths:
+
                         ds = xr.open_dataset(path)
 
                         if dataset in rename:
@@ -213,18 +218,20 @@ class GroupProcessor:
                                     combined_ds[v].data = a
                             ds.close()
 
-                combined_output_path = os.path.join(self.output_folder, combined_filename)
-                combined_ds.attrs["processing_level"] = ",".join(processing_levels)
-                combined_ds.attrs["acquisition_time"] = date_format(
-                    group.start_dt + (group.end_dt - group.start_dt) / 2)
 
-                combined_ds.to_netcdf(combined_output_path)
-                combined_ds.close()
+                    combined_output_path = os.path.join(self.output_folder, combined_filename)
+                    combined_ds.attrs["processing_level"] = ",".join(processing_levels)
+                    combined_ds.attrs["acquisition_time"] = date_format(
+                        group.start_dt + (group.end_dt - group.start_dt) / 2)
 
-                self.logger.info("Processed group (%d/%d): Written combined data to %s" % (
-                    group_index, len(self.groups), combined_output_path))
+                    combined_ds.to_netcdf(combined_output_path)
+                    combined_ds.close()
+
+                    self.logger.info("Processed group (%d/%d): Written combined data to %s" % (
+                        group_index, len(self.groups), combined_output_path))
+
             except Exception:
-                self.logger.exception("failed to process group")
+                self.logger.exception(f"failed to process group {group}")
 
 
 # this program performs actions controlled by a grouping spec

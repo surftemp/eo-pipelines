@@ -2,7 +2,7 @@
   "id": "eo_pipelines",
   "metadata": {
     "name": "EO Pipelines",
-    "version": "0.0.1",
+    "version": "0.0.5a",
     "description": "package for fetching and manipulating EO data"
   },
   "executor": "python",

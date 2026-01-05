@@ -22,6 +22,7 @@
 
 import os.path
 
+from eo_pipelines import VERSION
 from eo_pipelines.pipeline_stage import PipelineStage
 import xarray as xr
 from eo_pipelines.utils.runtime_parameters import RuntimeParameters
@@ -75,6 +76,7 @@ class RubberStamp(PipelineStage):
 
                         da = xr.DataArray(0)
                         da.attrs["pipeline"] = yaml_content
+                        da.attrs["eo_pipelines_version"] = VERSION
                         for name, value in RuntimeParameters.get_parameters().items():
                             da.attrs[name] = value
                         ds["eo_pipelines_metadata"] = da
