@@ -93,8 +93,12 @@ class EOPipelineRunner:
 
         self.save_status()
 
-    def run(self, yaml_path, only_stages=None):
+    def run(self, yaml_path, only_stages=None, start_date="", end_date=""):
         RuntimeParameters.set_parameter("YAML_PATH", os.path.abspath(yaml_path))
+        if start_date:
+            RuntimeParameters.set_parameter("START_DATE", start_date)
+        if end_date:
+            RuntimeParameters.set_parameter("END_DATE", end_date)
 
         with tempfile.TemporaryDirectory() as tmpdirname:
 

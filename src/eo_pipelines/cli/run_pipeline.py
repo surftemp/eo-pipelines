@@ -34,9 +34,11 @@ def main():
     parser.add_argument('-V', '--version', action='version', version="%(prog)s " + eo_pipelines.VERSION)
     parser.add_argument("yaml_path")
     parser.add_argument("--only-stages", nargs="+", metavar=["STAGE_ID"])
+    parser.add_argument("--start-date", help="Override the start date, format YYYY-MM-DD", default="")
+    parser.add_argument("--end-date", help="Override the end date, format YYYY-MM-DD", default="")
     args = parser.parse_args()
     runner = EOPipelineRunner()
-    if not runner.run(args.yaml_path, only_stages=args.only_stages):
+    if not runner.run(args.yaml_path, only_stages=args.only_stages, start_date=args.start_date, end_date=args.end_date):
         sys.exit(-1)
 
 

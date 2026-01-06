@@ -23,6 +23,7 @@
 import re
 import datetime
 from .pipeline_exceptions import PipelineSetupException
+from eo_pipelines.utils.runtime_parameters import RuntimeParameters
 
 
 class PipelineSpec:
@@ -62,11 +63,11 @@ class PipelineSpec:
 
             self.max_cloud_cover_fraction = float(spec.get("max_cloud_cover_fraction", 1))
 
-            # already converted to datetime.date if present
-            self.start_date = spec.get("start_date", None)
+            self.start_date = RuntimeParameters.get_parameter("START_DATE",spec.get("start_date", None))
             if self.start_date is not None:
                 self.start_date = datetime.datetime.strptime(self.start_date, "%Y-%m-%d").date()
-            self.end_date = spec.get("end_date", None)
+
+            self.end_date = RuntimeParameters.get_parameter("END_DATE",spec.get("end_date", None))
             if self.end_date is not None:
                 self.end_date = datetime.datetime.strptime(self.end_date, "%Y-%m-%d").date()
 
