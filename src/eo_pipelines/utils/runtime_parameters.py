@@ -25,11 +25,11 @@ class RuntimeParameters:
     parameters = {}
 
     @staticmethod
-    def get_parameter(name:str, default_value:str|None=None):
+    def get_parameter(name:str, default_value:str|bool|None=None):
         return RuntimeParameters.parameters.get(name, default_value)
 
     @staticmethod
-    def set_parameter(name:str, value:str):
+    def set_parameter(name:str, value:str|bool):
         RuntimeParameters.parameters[name] = value
 
     @staticmethod

@@ -26,6 +26,7 @@ import json
 
 from eo_pipelines.pipeline_stage import PipelineStage
 from eo_pipelines.pipeline_stage_utils import format_int, format_date, format_float
+from eo_pipelines.utils.runtime_parameters import RuntimeParameters
 
 # for supported datasets, map from channel name to a unique file suffix
 suffix_map = {
@@ -280,10 +281,14 @@ class USGS_Fetch(PipelineStage):
 
                         if len(entity_ids):
                             error_fraction = len(failed_entity_ids) / len(entity_ids)
-                            if error_fraction > error_fraction_threshold:
-                                raise Exception(
-                                    f"Failed to download dataset {dataset}: error fraction {error_fraction} > threshold {error_fraction_threshold}")
-
+                            if not RuntimeParameters.get_parameter("IGNORE_ERRORS", False):
+                                if error_fraction > error_fraction_threshold:
+                                    raise Exception(
+                                        f"Failed to download dataset {dataset}: error fraction {error_fraction} > threshold {error_fraction_threshold}")
+                            else:
+                                if error_fraction > 0:
+                                    self.get_logger().warn(
+                                        f"Downloaded dataset {dataset} with error fraction {error_fraction}")
                     output_folders[dataset] = dataset_output_folder
 
         return {"output": output_folders}

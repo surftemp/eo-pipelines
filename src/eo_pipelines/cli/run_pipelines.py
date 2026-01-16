@@ -37,6 +37,7 @@ def main():
     parser.add_argument("input_paths", nargs="+", help="paths to pipeline files, may contain wildcards")
     parser.add_argument("--limit", type=int, default=None)
     parser.add_argument("--only-stages", nargs="+", metavar=["STAGE_ID"])
+    parser.add_argument("--ignore-errors", action="store_true")
     parser.add_argument("--start-date", help="Override the start date, format YYYY-MM-DD", default="")
     parser.add_argument("--end-date", help="Override the end date, format YYYY-MM-DD", default="")
 
@@ -60,7 +61,7 @@ def main():
         # run the next pipeline
         print(f"running pipeline: {yaml_path} in folder {folder}")
         result_status = runner.run(yaml_filename, only_stages=args.only_stages,
-                                   start_date=args.start_date, end_date=args.end_date)
+                                   start_date=args.start_date, end_date=args.end_date, ignore_errors=args.ignore_errors)
 
         ran += 1
         print(f"completed pipeline: {yaml_path} in folder {folder} with result {result_status}")
