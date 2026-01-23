@@ -315,6 +315,6 @@ For code that is stored in a git repo, for each version number update to a tool 
 ```
 git tag -a X.Y.Z
 git show X.Y.Z
-git push origin X.Y.Z
+git push origin tag X.Y.Z
 ```
 
