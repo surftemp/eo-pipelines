@@ -72,19 +72,16 @@ class RubberStamp(PipelineStage):
                     try:
                         input_path = os.path.join(input_folder, fname)
                         output_path = os.path.join(output_folder, fname)
-                        print("aaa")
-                        print(input_path)
+
                         ds = xr.open_dataset(input_path)
-                        print("bbb")
-                        # da = xr.DataArray(0)
-                        # da.attrs["pipeline"] = yaml_content
-                        # da.attrs["eo_pipelines_version"] = VERSION
-                        # ds["eo_pipelines_metadata"] = da
+                        
+                        da = xr.DataArray(0)
+                        da.attrs["pipeline"] = yaml_content
+                        da.attrs["eo_pipelines_version"] = VERSION
+                        ds["eo_pipelines_metadata"] = da
 
                         ds.to_netcdf(output_path)
-                        print("ccc")
                         ds.close()
-                        print("ddd")
                         succeeded += 1
                     except Exception as ex:
                         self.logger.exception("failed to process %s" % input_path)
