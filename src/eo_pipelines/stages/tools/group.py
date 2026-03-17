@@ -148,7 +148,7 @@ class GroupProcessor:
 
                     paths = group.get_scenes_for_dataset(dataset)
 
-                    # paths will be sorted by filename, earlier paths take priority during stitching
+                    # paths will be sorted by filename, earlier paths take priority during stitching unless overlap bands are defined
                     if len(paths) > 1:
                         if dataset not in overlap_using:
                             self.logger.warning(
@@ -158,6 +158,24 @@ class GroupProcessor:
                             self.logger.info(
                                 "Stitching multiple scenes for dataset %s in group (%d/%d) with overlap_using band %s" % (
                                     dataset, group_index, len(self.groups), overlap_using[dataset]))
+
+                    if len(paths) > 1 and dataset in overlap_using:
+                        # we are stitching together from multiple scenes
+                        # sort the paths so that the paths that contribute the most data occur first
+                        # we will prioritise contributions from these paths
+                        overlap_band = overlap_using[dataset]
+                        path_freqs = []
+                        for path in paths:
+                            ds = xr.open_dataset(path)
+                            if dataset in rename:
+                                rename_vars = {k: v for (k, v) in rename[dataset].items() if k in ds.variables}
+                                if rename_vars:
+                                    ds = ds.rename_vars(rename_vars)
+                            count_valid = ds[overlap_band].count().item()
+                            path_freqs.append((path,count_valid))
+                            ds.close()
+                        paths = [path_freq[0] for path_freq in sorted(path_freqs, key=lambda t:t[1], reverse=True)]
+                        self.logger.info(f"Stitching in order {paths} based on {path_freqs} frequencies")
 
                     for path in paths:
 
@@ -217,7 +235,6 @@ class GroupProcessor:
                                         a = np.where(overlap_mask, ds[v].values, a)
                                     combined_ds[v].data = a
                             ds.close()
-
 
                     combined_output_path = os.path.join(self.output_folder, combined_filename)
                     combined_ds.attrs["processing_level"] = ",".join(processing_levels)

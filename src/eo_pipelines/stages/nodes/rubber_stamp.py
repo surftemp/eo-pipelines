@@ -74,7 +74,7 @@ class RubberStamp(PipelineStage):
                         output_path = os.path.join(output_folder, fname)
 
                         ds = xr.open_dataset(input_path)
-                        
+
                         da = xr.DataArray(0)
                         da.attrs["pipeline"] = yaml_content
                         da.attrs["eo_pipelines_version"] = VERSION

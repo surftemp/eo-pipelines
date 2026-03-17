@@ -24,6 +24,7 @@ import os.path
 
 from eo_pipelines.pipeline_stage import PipelineStage
 from eo_pipelines.pipeline_stage_utils import format_int
+from eo_pipelines.utils.runtime_parameters import RuntimeParameters
 
 
 class XESMFRegrid(PipelineStage):
@@ -51,7 +52,7 @@ class XESMFRegrid(PipelineStage):
             if not os.path.isabs(self.cache_path):
                 self.cache_path = os.path.join(self.get_working_directory(), self.cache_path)
 
-        self.check_tool_version = self.get_configuration().get("check_tool_version", True)
+        self.check_tool_version = True
         self.get_logger().info("eo_pipeline_stages.XESMFRegrid %s" % XESMFRegrid.VERSION)
 
     def get_parameters(self):
@@ -114,9 +115,13 @@ class XESMFRegrid(PipelineStage):
                         failed += 1
 
                 error_fraction = failed / (succeeded + failed)
-                if error_fraction > error_fraction_threshold:
-                    raise Exception(
-                        f"Failed to regrid dataset {dataset}: error fraction {error_fraction} > threshold {error_fraction_threshold}")
+                if not RuntimeParameters.get_parameter("IGNORE_ERRORS", False):
+                    if error_fraction > error_fraction_threshold:
+                        raise Exception(
+                            f"Failed to regrid dataset {dataset}: error fraction {error_fraction} > threshold {error_fraction_threshold}")
+
+                if error_fraction > 0:
+                    self.get_logger().warn(f"Regridded dataset {dataset} with error fraction {error_fraction}")
 
                 total_succeeded += succeeded
                 total_failed += failed

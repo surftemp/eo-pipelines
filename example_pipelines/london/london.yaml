@@ -21,10 +21,6 @@ nodes:
   n0:
     type: eo_pipelines:usgs_search
     properties:
-      configuration:
-        night: True
-        row: 26
-        path: 198
       executor_settings:
         can_skip: true
   n1:

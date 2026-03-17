@@ -48,7 +48,7 @@ class USGS_Search(PipelineStage):
     async def load(self):
         await super().load()
         self.output_path = self.get_configuration().get("output_path", self.get_working_directory())
-        self.check_tool_version = self.get_configuration().get("check_tool_version", True)
+        self.check_tool_version = True
         self.get_logger().info("eo_pipeline_stages.Search %s" % USGS_Search.VERSION)
 
     def get_parameters(self):

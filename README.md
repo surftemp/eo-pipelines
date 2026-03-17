@@ -24,6 +24,12 @@ mamba install xarray netcdf4 pyproj requests pandas pillow shapely scipy scikit-
 pip install hyrrokkin[YAML]==0.1.2
 ```
 
+Clone this repo, then cd into the `eo-pipelines` folder and run
+
+```
+pip install -e .
+```
+
 ## Defining Pipelines
 
 Pipelines are defined using a YAML file, for example `test_pipeline.yaml`, that starts with a configuration section:
@@ -291,9 +297,7 @@ Non-trivial updates to a pipeline stage should trigger version increments for bo
 
 ### external tool version numbers
 
-Some pipeline stages call out to external tools rather than executing code within the package.  The version of the tool is by default checked against the version of the stage.
-
-To suppress this version checking, add `check_tool_version: false` to the stage configuration.
+Some pipeline stages call out to external tools rather than executing code within the package.  The version of the tool is checked against the version of the stage and will not run if there is a version mismatch.
 
 The following stages use external tools:
 
@@ -304,7 +308,7 @@ The following stages use external tools:
 * xesmf_regrid
 * custom_processor
 
-The external tools support a `--check-version <VERSION>` command line option (or similar mechanism)
+The external tools support a `--check-version <VERSION>` command line option (or similar mechanism) to pass the stage version number to the tool for checking.
 
 Versions of the stages and tools should be kept in sync
 

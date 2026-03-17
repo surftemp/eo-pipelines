@@ -41,7 +41,7 @@ class Regrid(PipelineStage):
         else:
             if not os.path.isabs(self.output_path):
                 self.output_path = os.path.join(self.get_working_directory(), self.output_path)
-        self.check_tool_version = self.get_configuration().get("check_tool_version", True)
+        self.check_tool_version = True
         self.get_logger().info("eo_pipeline_stages.Regrid %s" % Regrid.VERSION)
 
     def get_parameters(self):

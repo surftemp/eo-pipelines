@@ -41,7 +41,7 @@ class LandsatImport(PipelineStage):
     async def load(self):
         await super().load()
         self.output_path = self.get_configuration().get("output_path", None)
-        self.check_tool_version = self.get_configuration().get("check_tool_version", True)
+        self.check_tool_version = True
         if self.output_path is None:
             self.output_path = self.get_working_directory()
         else:
@@ -135,9 +135,9 @@ class LandsatImport(PipelineStage):
                     if error_fraction > error_fraction_threshold:
                         raise Exception(
                             f"Failed to import dataset {dataset}: error fraction {error_fraction} > threshold {error_fraction_threshold}")
-                else:
-                    if error_fraction > 0:
-                        self.get_logger().warn(f"Imported dataset {dataset} with error fraction {error_fraction}")
+
+                if error_fraction > 0:
+                    self.get_logger().warn(f"Imported dataset {dataset} with error fraction {error_fraction}")
 
                 total_succeeded += succeeded
                 total_failed += failed
